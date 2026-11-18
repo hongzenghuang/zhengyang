@@ -5,115 +5,127 @@ const GRAVITY = 32.174; // ft/s^2
 const AIR_DENSITY_SEA_LEVEL = 0.002377; // slug/ft^3
 const WING_AREA = 4605; // ft^2 (B777-300ER)
 const MASS = 775000 / 32.174; // slug (max takeoff weight / g)
+const MAX_THRUST_PER_ENGINE = 115000; // lbf per engine
 
-// Calculate air density based on altitude
+// Calculate air density based on altitude (ISA model)
 function getAirDensity(altitude: number): number {
-  // Simplified atmospheric model
-  const altitudeFactor = Math.max(0, 1 - altitude / 100000);
-  return AIR_DENSITY_SEA_LEVEL * altitudeFactor;
+  const altitudeFt = Math.max(0, altitude);
+  const tempRatio = 1 - (altitudeFt * 0.000006875);
+  const pressureRatio = Math.pow(tempRatio, 5.2561);
+  return AIR_DENSITY_SEA_LEVEL * pressureRatio / tempRatio;
 }
 
-// Calculate lift coefficient based on angle of attack and flaps
+// Calculate lift coefficient
 function getLiftCoefficient(pitch: number, flapsAngle: number, airspeed: number): number {
-  const baseCL = 0.2 + (pitch * 0.05); // Simplified lift curve
-  const flapsBonus = flapsAngle * 0.02;
-  const stallFactor = airspeed < 120 ? 0.5 : 1; // Stall warning below 120 knots
-  return (baseCL + flapsBonus) * stallFactor;
+  const aoa = pitch * 0.8; // Simplified angle of attack
+  const baseCL = 0.3 + (aoa * 0.08);
+  const flapsBonus = flapsAngle * 0.015;
+  const stallSpeed = 130 + flapsAngle * 2;
+  const stallFactor = airspeed < stallSpeed ? Math.max(0.3, airspeed / stallSpeed) : 1;
+  return Math.max(-0.5, Math.min(2.5, (baseCL + flapsBonus) * stallFactor));
 }
 
 // Calculate drag coefficient
-function getDragCoefficient(flapsAngle: number, gearDown: boolean): number {
-  const baseCD = 0.02;
-  const flapsDrag = flapsAngle * 0.005;
-  const gearDrag = gearDown ? 0.015 : 0;
-  return baseCD + flapsDrag + gearDrag;
+function getDragCoefficient(flapsAngle: number, gearDown: boolean, airspeed: number): number {
+  const baseCD = 0.018;
+  const inducedDrag = 0.0001 * airspeed;
+  const flapsDrag = flapsAngle * 0.004;
+  const gearDrag = gearDown ? 0.012 : 0;
+  return baseCD + inducedDrag + flapsDrag + gearDrag;
 }
 
 // Main physics update function
 export function updateFlightPhysics(
   state: AircraftState,
-  deltaTime: number // in seconds
+  deltaTime: number
 ): AircraftState {
   const newState = { ...state };
-  
-  // Calculate thrust from engines
-  const engine1Thrust = state.engine1Enabled ? state.throttle * 115000 : 0; // lbf
-  const engine2Thrust = state.engine2Enabled ? state.throttle * 115000 : 0; // lbf
+  const dt = Math.min(deltaTime, 0.1); // Cap delta time
+
+  // Calculate thrust (throttle is 0-100, convert to 0-1)
+  const throttleNorm = state.throttle / 100;
+  const engine1Thrust = state.engine1Enabled ? throttleNorm * MAX_THRUST_PER_ENGINE : 0;
+  const engine2Thrust = state.engine2Enabled ? throttleNorm * MAX_THRUST_PER_ENGINE : 0;
   const totalThrust = engine1Thrust + engine2Thrust;
-  
-  // Update N1 based on throttle
-  const targetN1 = state.throttle * 0.95 + 5; // N1 percentage
-  newState.engine1N1 = state.engine1Enabled ? targetN1 : Math.max(0, state.engine1N1 - deltaTime * 10);
-  newState.engine2N1 = state.engine2Enabled ? targetN1 : Math.max(0, state.engine2N1 - deltaTime * 10);
-  
+
+  // Update N1 based on throttle (smooth transition)
+  const targetN1 = state.throttle * 0.9 + 10;
+  const n1Rate = 15; // N1 change rate per second
+  newState.engine1N1 = state.engine1Enabled 
+    ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, n1Rate * dt / 100)
+    : Math.max(0, state.engine1N1 - dt * 8);
+  newState.engine2N1 = state.engine2Enabled 
+    ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, n1Rate * dt / 100)
+    : Math.max(0, state.engine2N1 - dt * 8);
+
   // Calculate aerodynamic forces
   const airDensity = getAirDensity(state.altitude);
   const velocityFtS = state.airspeed * 1.68781; // knots to ft/s
-  
+
   const lift = 0.5 * airDensity * velocityFtS * velocityFtS * WING_AREA * 
                getLiftCoefficient(state.pitch, state.flapsAngle, state.airspeed);
   const drag = 0.5 * airDensity * velocityFtS * velocityFtS * WING_AREA * 
-               getDragCoefficient(state.flapsAngle, state.gearDown);
+               getDragCoefficient(state.flapsAngle, state.gearDown, state.airspeed);
   const weight = MASS * GRAVITY;
-  
+
   // Calculate accelerations
   const pitchRad = (state.pitch * Math.PI) / 180;
   const thrustComponent = totalThrust * Math.cos(pitchRad);
   const dragForce = drag + weight * Math.sin(pitchRad);
-  
   const netForceForward = thrustComponent - dragForce;
   const accelerationForward = netForceForward / MASS;
-  
+
   // Update airspeed
-  const newVelocityFtS = velocityFtS + accelerationForward * deltaTime;
+  const newVelocityFtS = velocityFtS + accelerationForward * dt;
   newState.airspeed = Math.max(0, newVelocityFtS / 1.68781);
-  
+
   // Calculate vertical forces
   const liftComponent = lift * Math.cos((state.roll * Math.PI) / 180);
   const verticalForce = liftComponent - weight * Math.cos(pitchRad);
   const verticalAcceleration = verticalForce / MASS;
-  
-  // Update vertical speed
-  newState.verticalSpeed = state.verticalSpeed + verticalAcceleration * deltaTime * 60; // ft/min
-  
+
+  // Update vertical speed (smooth)
+  const targetVS = verticalAcceleration * 60 * 60; // ft/min
+  newState.verticalSpeed = state.verticalSpeed + (targetVS - state.verticalSpeed) * Math.min(1, dt * 2);
+
   // Update altitude
-  const altitudeChange = (state.verticalSpeed / 60) * deltaTime;
+  const altitudeChange = (state.verticalSpeed / 60) * dt;
   newState.altitude = Math.max(0, state.altitude + altitudeChange);
-  
+
   // Update heading based on roll
-  const turnRate = state.roll * 0.03; // degrees per second per degree of roll
-  newState.heading = (state.heading + turnRate * deltaTime + 360) % 360;
-  
-  // Ground speed approximation
-  newState.groundSpeed = state.airspeed * 0.98; // Simplified wind effect
-  
-  // Apply pitch damping
-  if (Math.abs(state.pitch) > 0.1) {
-    newState.pitch = state.pitch * 0.98;
+  const turnRate = state.roll * 0.025;
+  newState.heading = (state.heading + turnRate * dt + 360) % 360;
+
+  // Ground speed
+  newState.groundSpeed = state.airspeed * 0.98;
+
+  // Apply pitch damping (return to neutral slowly)
+  if (Math.abs(state.pitch) > 0.5) {
+    newState.pitch = state.pitch * (1 - dt * 0.3);
   }
-  
+
   // Apply roll damping
-  if (Math.abs(state.roll) > 0.1) {
-    newState.roll = state.roll * 0.95;
+  if (Math.abs(state.roll) > 0.5) {
+    newState.roll = state.roll * (1 - dt * 0.5);
   }
-  
+
   return newState;
 }
 
-// Initial aircraft state
+// Initial aircraft state - stable cruise configuration
 export const initialAircraftState: AircraftState = {
   altitude: 35000,
-  pitch: 0,
+  pitch: 2.5, // Slight nose up for level flight
   roll: 0,
   heading: 270,
   airspeed: 280,
   verticalSpeed: 0,
   groundSpeed: 275,
-  engine1N1: 85,
-  engine2N1: 85,
+  engine1N1: 82,
+  engine2N1: 82,
   engine1Enabled: true,
   engine2Enabled: true,
-  throttle: 80,
+  throttle: 78,
   gearDown: false,
   flapsAngle: 0,
   autopilotEnabled: false,

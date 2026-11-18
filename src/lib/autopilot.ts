@@ -1,6 +1,6 @@
 import { AircraftState } from './types';
 
-// Autopilot logic to maintain target heading, altitude, and vertical speed
+// Autopilot logic with smooth control
 export function applyAutopilot(
   state: AircraftState,
   deltaTime: number
@@ -10,33 +10,30 @@ export function applyAutopilot(
   }
 
   const newState = { ...state };
+  const dt = Math.min(deltaTime, 0.1);
 
-  // Heading hold - adjust roll to turn towards target heading
+  // Heading hold - smooth roll control
   const headingError = state.targetHeading - state.heading;
   let normalizedError = headingError;
-  
-  // Normalize to -180 to 180
   if (normalizedError > 180) normalizedError -= 360;
   if (normalizedError < -180) normalizedError += 360;
-  
-  // Calculate target roll based on heading error
-  const targetRoll = Math.max(-30, Math.min(30, normalizedError * 2));
-  
-  // Smoothly adjust roll towards target
-  const rollDiff = targetRoll - state.roll;
-  newState.roll = state.roll + rollDiff * deltaTime * 2;
 
-  // Altitude hold - adjust pitch to maintain target altitude
+  // Calculate target roll (max 25 degrees bank)
+  const targetRoll = Math.max(-25, Math.min(25, normalizedError * 1.5));
+  const rollDiff = targetRoll - state.roll;
+  newState.roll = state.roll + rollDiff * dt * 1.5;
+
+  // Altitude hold - smooth pitch control
   const altitudeError = state.targetAltitude - state.altitude;
   
-  // Calculate target vertical speed based on altitude error
-  const targetVS = Math.max(-2000, Math.min(2000, altitudeError * 10));
+  // Calculate target vertical speed (max 1800 ft/min)
+  const targetVS = Math.max(-1800, Math.min(1800, altitudeError * 8));
   
   // Adjust pitch to achieve target vertical speed
   const vsError = targetVS - state.verticalSpeed;
-  const pitchAdjustment = vsError * 0.001;
+  const pitchAdjustment = vsError * 0.0008;
   
-  newState.pitch = Math.max(-15, Math.min(15, state.pitch + pitchAdjustment * deltaTime * 10));
+  newState.pitch = Math.max(-12, Math.min(12, state.pitch + pitchAdjustment * dt * 8));
 
   return newState;
 }

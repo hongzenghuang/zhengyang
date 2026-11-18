@@ -13,7 +13,6 @@ export function useKeyboardControls({ dispatch, enabled = true }: UseKeyboardCon
   useEffect(() => {
     if (!enabled) return;
 
-    // Initialize audio on first interaction
     const initAudio = () => {
       audioSystem.init();
       window.removeEventListener('keydown', initAudio);
@@ -23,7 +22,12 @@ export function useKeyboardControls({ dispatch, enabled = true }: UseKeyboardCon
     window.addEventListener('click', initAudio);
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent default for game keys
+      // Don't trigger if focus is on input elements
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
       const gameKeys = ['w', 's', 'g', 'p', 't', '1', '2', '[', ']', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
       if (gameKeys.includes(e.key)) {
         e.preventDefault();
