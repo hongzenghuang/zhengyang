@@ -10,6 +10,7 @@ import { audioSystem } from '@/lib/audio';
 interface FlightContextType {
   state: AircraftState;
   dispatch: (action: ControlAction) => void;
+  setThrottle: (value: number) => void;
   setTargetHeading: (heading: number) => void;
   setTargetAltitude: (altitude: number) => void;
   setTargetAirspeed: (speed: number) => void;
@@ -88,7 +89,6 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
         case 'TOGGLE_AUTOPILOT':
           newState.autopilotEnabled = !prev.autopilotEnabled;
           if (newState.autopilotEnabled) {
-            // Sync targets when enabling
             newState.targetHeading = Math.round(prev.heading);
             newState.targetAltitude = Math.round(prev.altitude / 100) * 100;
             newState.targetAirspeed = Math.round(prev.airspeed);
@@ -126,6 +126,11 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Direct throttle setter for slider
+  const setThrottle = useCallback((value: number) => {
+    setState(prev => ({ ...prev, throttle: Math.max(0, Math.min(100, value)) }));
+  }, []);
+
   const setTargetHeading = useCallback((heading: number) => {
     setState(prev => ({ ...prev, targetHeading: ((heading % 360) + 360) % 360 }));
   }, []);
@@ -154,6 +159,7 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
     <FlightContext.Provider value={{ 
       state, 
       dispatch, 
+      setThrottle,
       setTargetHeading, 
       setTargetAltitude, 
       setTargetAirspeed,

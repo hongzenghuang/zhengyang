@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ControlAction } from '@/lib/types';
 import { audioSystem } from '@/lib/audio';
 
@@ -9,7 +9,20 @@ interface UseKeyboardControlsProps {
   enabled?: boolean;
 }
 
+// Toggle actions that should only trigger once per keypress (not on repeat)
+const TOGGLE_ACTIONS = new Set([
+  'TOGGLE_GEAR',
+  'TOGGLE_AUTOPILOT', 
+  'TOGGLE_AUTOTHROTTLE',
+  'TOGGLE_ENGINE_1',
+  'TOGGLE_ENGINE_2',
+  'FLAPS_UP',
+  'FLAPS_DOWN'
+]);
+
 export function useKeyboardControls({ dispatch, enabled = true }: UseKeyboardControlsProps) {
+  const lastToggleRef = useRef<Record<string, number>>({});
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -33,47 +46,37 @@ export function useKeyboardControls({ dispatch, enabled = true }: UseKeyboardCon
         e.preventDefault();
       }
 
+      let action: ControlAction | null = null;
+
       switch (e.key.toLowerCase()) {
-        case 'w':
-          dispatch('THROTTLE_UP');
-          break;
-        case 's':
-          dispatch('THROTTLE_DOWN');
-          break;
-        case 'g':
-          dispatch('TOGGLE_GEAR');
-          break;
-        case 'p':
-          dispatch('TOGGLE_AUTOPILOT');
-          break;
-        case 't':
-          dispatch('TOGGLE_AUTOTHROTTLE');
-          break;
-        case '1':
-          dispatch('TOGGLE_ENGINE_1');
-          break;
-        case '2':
-          dispatch('TOGGLE_ENGINE_2');
-          break;
-        case '[':
-          dispatch('FLAPS_UP');
-          break;
-        case ']':
-          dispatch('FLAPS_DOWN');
-          break;
-        case 'arrowup':
-          dispatch('PITCH_UP');
-          break;
-        case 'arrowdown':
-          dispatch('PITCH_DOWN');
-          break;
-        case 'arrowleft':
-          dispatch('ROLL_LEFT');
-          break;
-        case 'arrowright':
-          dispatch('ROLL_RIGHT');
-          break;
+        case 'w': action = 'THROTTLE_UP'; break;
+        case 's': action = 'THROTTLE_DOWN'; break;
+        case 'g': action = 'TOGGLE_GEAR'; break;
+        case 'p': action = 'TOGGLE_AUTOPILOT'; break;
+        case 't': action = 'TOGGLE_AUTOTHROTTLE'; break;
+        case '1': action = 'TOGGLE_ENGINE_1'; break;
+        case '2': action = 'TOGGLE_ENGINE_2'; break;
+        case '[': action = 'FLAPS_UP'; break;
+        case ']': action = 'FLAPS_DOWN'; break;
+        case 'arrowup': action = 'PITCH_UP'; break;
+        case 'arrowdown': action = 'PITCH_DOWN'; break;
+        case 'arrowleft': action = 'ROLL_LEFT'; break;
+        case 'arrowright': action = 'ROLL_RIGHT'; break;
       }
+
+      if (!action) return;
+
+      // For toggle actions, prevent rapid repeat (debounce)
+      if (TOGGLE_ACTIONS.has(action)) {
+        if (e.repeat) return; // Skip if key is held down
+        
+        const now = Date.now();
+        const lastTime = lastToggleRef.current[action] || 0;
+        if (now - lastTime < 300) return; // 300ms debounce
+        lastToggleRef.current[action] = now;
+      }
+
+      dispatch(action);
     };
 
     window.addEventListener('keydown', handleKeyDown);

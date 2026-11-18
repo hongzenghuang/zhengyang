@@ -10,7 +10,7 @@ export function applyAutopilot(
   }
 
   const newState = { ...state };
-  const dt = Math.min(deltaTime, 0.1);
+  const dt = Math.min(deltaTime, 0.05);
 
   // Heading hold - smooth roll control
   const headingError = state.targetHeading - state.heading;
@@ -26,14 +26,14 @@ export function applyAutopilot(
   // Altitude hold - smooth pitch control
   const altitudeError = state.targetAltitude - state.altitude;
   
-  // Calculate target vertical speed (max 1800 ft/min)
-  const targetVS = Math.max(-1800, Math.min(1800, altitudeError * 8));
+  // Calculate target vertical speed (max 1500 ft/min)
+  const targetVS = Math.max(-1500, Math.min(1500, altitudeError * 6));
   
   // Adjust pitch to achieve target vertical speed
   const vsError = targetVS - state.verticalSpeed;
-  const pitchAdjustment = vsError * 0.0008;
+  const pitchAdjustment = vsError * 0.0005;
   
-  newState.pitch = Math.max(-12, Math.min(12, state.pitch + pitchAdjustment * dt * 8));
+  newState.pitch = Math.max(-10, Math.min(10, state.pitch + pitchAdjustment * dt * 6));
 
   return newState;
 }
