@@ -1,0 +1,4 @@
+[
+  { "route": "/", "group": "飞行员", "order": 1 },
+  { "route": "/flight-sim-main", "group": "飞行员", "order": 2 }
+]
