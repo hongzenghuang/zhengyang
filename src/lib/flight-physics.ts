@@ -146,26 +146,26 @@ export function updateFlightPhysics(
   return newState;
 }
 
-// Initial aircraft state - stable cruise configuration
+// Initial aircraft state - stopped on ground
 export const initialAircraftState: AircraftState = {
-  altitude: 35000,
-  pitch: 2.5, // Trimmed for level flight at cruise
+  altitude: 0,
+  pitch: 0,
   roll: 0,
   heading: 270,
-  airspeed: 280, // IAS
+  airspeed: 0,
   verticalSpeed: 0,
-  groundSpeed: 490, // TAS at 35000ft
-  engine1N1: 82,
-  engine2N1: 82,
+  groundSpeed: 0,
+  engine1N1: 0,
+  engine2N1: 0,
   engine1Enabled: true,
   engine2Enabled: true,
-  throttle: 78,
-  gearDown: false,
+  throttle: 0,
+  gearDown: true,
   flapsAngle: 0,
   autopilotEnabled: false,
   autothrottleEnabled: false,
   targetHeading: 270,
-  targetAltitude: 35000,
-  targetAirspeed: 280,
+  targetAltitude: 10000,
+  targetAirspeed: 250,
   verticalSpeedTarget: 0,
 };
