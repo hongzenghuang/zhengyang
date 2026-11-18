@@ -74,7 +74,7 @@ export function updateFlightPhysics(
 
   // Convert IAS to TAS for aerodynamic calculations
   const densityRatio = getDensityRatio(state.altitude);
-  const tas = state.airspeed / Math.sqrt(densityRatio); // TAS in knots
+  const tas = state.airspeed / Math.sqrt(Math.max(0.01, densityRatio)); // TAS in knots
   const velocityFtS = tas * 1.68781; // TAS to ft/s
 
   // Calculate aerodynamic forces using TAS
@@ -87,50 +87,70 @@ export function updateFlightPhysics(
   const drag = dynamicPressure * WING_AREA * cd;
   const weight = CRUISE_WEIGHT;
 
+  // Ground detection - aircraft is on ground when altitude is 0 and gear is down
+  const isOnGround = state.altitude <= 0 && state.gearDown;
+
   // Calculate accelerations
   const pitchRad = (state.pitch * Math.PI) / 180;
   const rollRad = (state.roll * Math.PI) / 180;
 
-  // Forward acceleration (thrust - drag - gravity component)
+  // Forward acceleration (thrust - drag - gravity component - ground friction)
   const thrustForward = totalThrust * Math.cos(pitchRad);
   const dragForce = drag;
   const gravityForward = weight * Math.sin(pitchRad);
-  const netForceForward = thrustForward - dragForce - gravityForward;
+  const groundFriction = isOnGround ? velocityFtS * 500 : 0; // Ground friction proportional to speed
+  const netForceForward = thrustForward - dragForce - gravityForward - groundFriction;
   const accelerationForward = netForceForward / MASS;
 
   // Update airspeed (IAS)
-  const newTASFtS = velocityFtS + accelerationForward * dt;
+  const newTASFtS = Math.max(0, velocityFtS + accelerationForward * dt);
   const newTAS = newTASFtS / 1.68781; // back to knots
-  const newIAS = newTAS * Math.sqrt(densityRatio);
+  const newIAS = newTAS * Math.sqrt(Math.max(0.01, densityRatio));
   newState.airspeed = Math.max(0, newIAS);
 
-  // Vertical forces
-  const liftVertical = lift * Math.cos(rollRad);
-  const gravityVertical = weight * Math.cos(pitchRad);
-  const netForceVertical = liftVertical - gravityVertical;
-  const verticalAcceleration = netForceVertical / MASS; // ft/s²
+  // Vertical forces - only apply when not on ground
+  if (isOnGround) {
+    // On ground: no vertical movement, vertical speed is 0
+    newState.verticalSpeed = 0;
+    newState.altitude = 0;
+  } else {
+    // In air: calculate vertical forces
+    const liftVertical = lift * Math.cos(rollRad);
+    const gravityVertical = weight * Math.cos(pitchRad);
+    const netForceVertical = liftVertical - gravityVertical;
+    const verticalAcceleration = netForceVertical / MASS; // ft/s²
 
-  // Update vertical speed (ft/min)
-  // verticalAcceleration is in ft/s², convert to ft/min per second
-  const vsChange = verticalAcceleration * 60 * dt; // ft/min change this frame
-  newState.verticalSpeed = state.verticalSpeed + vsChange;
+    // Update vertical speed (ft/min)
+    // verticalAcceleration is in ft/s², convert to ft/min per second by multiplying by 60
+    const vsChange = verticalAcceleration * 60 * dt; // ft/min change this frame
+    newState.verticalSpeed = state.verticalSpeed + vsChange;
 
-  // Dampen vertical speed oscillations
-  if (Math.abs(state.verticalSpeed) < 5 && Math.abs(verticalAcceleration) < 0.1) {
-    newState.verticalSpeed = newState.verticalSpeed * 0.95;
+    // Dampen vertical speed oscillations near equilibrium
+    if (Math.abs(state.verticalSpeed) < 5 && Math.abs(verticalAcceleration) < 0.1) {
+      newState.verticalSpeed = newState.verticalSpeed * 0.95;
+    }
+
+    // Clamp vertical speed to realistic values
+    newState.verticalSpeed = Math.max(-6000, Math.min(6000, newState.verticalSpeed));
+
+    // Update altitude using average vertical speed
+    const avgVS = (state.verticalSpeed + newState.verticalSpeed) / 2;
+    const altitudeChange = (avgVS / 60) * dt; // ft/min to ft/s, then multiply by dt
+    newState.altitude = Math.max(0, state.altitude + altitudeChange);
+
+    // If we hit the ground, stop descending
+    if (newState.altitude <= 0) {
+      newState.altitude = 0;
+      newState.verticalSpeed = Math.max(0, newState.verticalSpeed); // Only allow positive VS on ground
+    }
   }
 
-  // Update altitude using average vertical speed
-  const avgVS = (state.verticalSpeed + newState.verticalSpeed) / 2;
-  const altitudeChange = (avgVS / 60) * dt; // ft/min to ft/s, then multiply by dt
-  newState.altitude = Math.max(0, state.altitude + altitudeChange);
-
-  // Update heading based on roll
-  const turnRate = state.roll * 0.03; // degrees per second per degree of roll
+  // Update heading based on roll (only significant in air)
+  const turnRate = isOnGround ? state.roll * 0.01 : state.roll * 0.03; // degrees per second per degree of roll
   newState.heading = (state.heading + turnRate * dt + 360) % 360;
 
   // Ground speed approximation
-  const newTAS2 = newState.airspeed / Math.sqrt(densityRatio);
+  const newTAS2 = newState.airspeed / Math.sqrt(Math.max(0.01, densityRatio));
   newState.groundSpeed = newTAS2 * 0.98;
 
   // Apply pitch damping (return to trim slowly)
