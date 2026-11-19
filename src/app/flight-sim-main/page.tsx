@@ -679,7 +679,7 @@ export default function FlightSimulatorPage() {
               })}
             </div>
 
-            {/* N2/N3 Circular Gauges */}
+            {/* N2 Circular Gauges */}
             <div className="grid grid-cols-2 gap-2 flex-shrink-0">
               {[1, 2].map(engNum => {
                 const n1 = engNum === 1 ? state.engine1N1 : state.engine2N1;
@@ -687,6 +687,19 @@ export default function FlightSimulatorPage() {
                 return (
                   <div key={`n2-${engNum}`} className="eicas-display p-2 flex flex-col items-center">
                     <CircularGauge value={n2} max={100} label={`ENG${engNum} N2`} unit="%" warning={90} danger={98} />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* N3 Circular Gauges */}
+            <div className="grid grid-cols-2 gap-2 flex-shrink-0">
+              {[1, 2].map(engNum => {
+                const n1 = engNum === 1 ? state.engine1N1 : state.engine2N1;
+                const n3 = Math.min(100, n1 * 0.95);
+                return (
+                  <div key={`n3-${engNum}`} className="eicas-display p-2 flex flex-col items-center">
+                    <CircularGauge value={n3} max={100} label={`ENG${engNum} N3`} unit="%" warning={85} danger={95} />
                   </div>
                 );
               })}

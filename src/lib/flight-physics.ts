@@ -62,14 +62,15 @@ export function updateFlightPhysics(
   const engine2Thrust = state.engine2Enabled ? throttleNorm * MAX_THRUST_PER_ENGINE : 0;
   const totalThrust = engine1Thrust + engine2Thrust;
 
-  // Update N1 based on throttle (smooth transition)
+  // Update N1 based on throttle (direct mapping with fast response)
+  // N1 = throttle * 0.85 + 15 (idle at 15%, max at 100%)
   const targetN1 = state.throttle * 0.85 + 15;
-  const n1Rate = 40; // N1 change rate per second (faster spool-up)
+  const n1Rate = 5; // N1 change rate (units per second)
   newState.engine1N1 = state.engine1Enabled 
-    ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, n1Rate * dt / 100)
+    ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, n1Rate * dt)
     : Math.max(0, state.engine1N1 - dt * 10);
   newState.engine2N1 = state.engine2Enabled 
-    ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, n1Rate * dt / 100)
+    ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, n1Rate * dt)
     : Math.max(0, state.engine2N1 - dt * 10);
 
   // Convert IAS to TAS for aerodynamic calculations
