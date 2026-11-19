@@ -4,7 +4,6 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { useFlight } from '@/contexts/FlightContext';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 
-// Traffic aircraft type
 interface TrafficAircraft {
   id: number;
   bearing: number;
@@ -15,7 +14,6 @@ interface TrafficAircraft {
   callsign: string;
 }
 
-// Weather type
 interface Weather {
   type: 'clear' | 'cloudy' | 'rain' | 'fog' | 'storm';
   visibility: number;
@@ -23,6 +21,96 @@ interface Weather {
   windSpeed: number;
   clouds: number;
   temperature: number;
+}
+
+// Circular gauge component for engine parameters
+function CircularGauge({ 
+  value, 
+  max, 
+  label, 
+  unit, 
+  warning = 85,
+  danger = 95 
+}: { 
+  value: number; 
+  max: number; 
+  label: string; 
+  unit: string;
+  warning?: number;
+  danger?: number;
+}) {
+  const percentage = Math.min(100, (value / max) * 100);
+  const startAngle = -225;
+  const endAngle = 45;
+  const totalAngle = endAngle - startAngle;
+  const currentAngle = startAngle + (percentage / 100) * totalAngle;
+  
+  const getColor = () => {
+    if (percentage >= danger) return '#ff4444';
+    if (percentage >= warning) return '#ffaa00';
+    return '#00ff88';
+  };
+
+  const polarToCartesian = (cx: number, cy: number, r: number, angle: number) => {
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+
+  const describeArc = (cx: number, cy: number, r: number, start: number, end: number) => {
+    const s = polarToCartesian(cx, cy, r, start);
+    const e = polarToCartesian(cx, cy, r, end);
+    const largeArc = end - start > 180 ? 1 : 0;
+    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${largeArc} 1 ${e.x} ${e.y}`;
+  };
+
+  return (
+    <div className="relative w-full aspect-square max-w-[100px]">
+      <svg viewBox="0 0 100 100" className="w-full h-full">
+        {/* Background arc */}
+        <path
+          d={describeArc(50, 50, 40, startAngle, endAngle)}
+          fill="none"
+          stroke="#1a3a1a"
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
+        {/* Value arc */}
+        <path
+          d={describeArc(50, 50, 40, startAngle, currentAngle)}
+          fill="none"
+          stroke={getColor()}
+          strokeWidth="6"
+          strokeLinecap="round"
+          style={{ filter: `drop-shadow(0 0 3px ${getColor()})` }}
+        />
+        {/* Tick marks */}
+        {[0, 25, 50, 75, 100].map(tick => {
+          const angle = startAngle + (tick / 100) * totalAngle;
+          const inner = polarToCartesian(50, 50, 32, angle);
+          const outer = polarToCartesian(50, 50, 36, angle);
+          return (
+            <line
+              key={tick}
+              x1={inner.x} y1={inner.y}
+              x2={outer.x} y2={outer.y}
+              stroke="#6a8a6a"
+              strokeWidth="1"
+            />
+          );
+        })}
+        {/* Center value */}
+        <text x="50" y="48" textAnchor="middle" fill={getColor()} fontSize="14" fontWeight="bold" fontFamily="monospace">
+          {value.toFixed(0)}
+        </text>
+        <text x="50" y="60" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">
+          {unit}
+        </text>
+      </svg>
+      <div className="absolute top-1 left-1/2 -translate-x-1/2 text-[8px] text-[#6a8a6a] tracking-wider">
+        {label}
+      </div>
+    </div>
+  );
 }
 
 export default function FlightSimulatorPage() {
@@ -116,10 +204,6 @@ export default function FlightSimulatorPage() {
     return ((trafficBearing - state.heading + 540) % 360) - 180;
   };
 
-  // Speed tape values
-  const speedTapeValues = Array.from({ length: 11 }, (_, i) => Math.round(state.airspeed - 50 + i * 10));
-  const altTapeValues = Array.from({ length: 11 }, (_, i) => Math.round((state.altitude - 500 + i * 100) / 100) * 100);
-
   return (
     <div className="h-screen bg-[#0a0a0a] text-white font-mono flex flex-col overflow-hidden select-none">
       <style jsx global>{`
@@ -179,63 +263,11 @@ export default function FlightSimulatorPage() {
           font-size: 9px;
           letter-spacing: 1px;
         }
-        .eicas-bar {
-          height: 6px;
-          background: #0a1a0a;
-          border: 1px solid #1a3a1a;
-          border-radius: 2px;
-          overflow: hidden;
-        }
-        .eicas-bar-fill {
-          height: 100%;
-          background: linear-gradient(90deg, #00ff88, #00cc6a);
-          transition: width 0.2s;
-        }
         .traffic-dot {
-          position: absolute;
-          width: 8px; height: 8px;
+          width: 6px; height: 6px;
           background: #00ff88;
           border-radius: 50%;
-          box-shadow: 0 0 6px #00ff88;
-        }
-        .traffic-label {
-          position: absolute;
-          font-size: 7px;
-          color: #00ff88;
-          white-space: nowrap;
-          text-shadow: 0 0 2px #000;
-        }
-        .pfd-tape {
-          position: absolute;
-          width: 50px;
-          height: 100%;
-          background: rgba(0,0,0,0.85);
-          border: 1px solid #333;
-          overflow: hidden;
-        }
-        .pfd-tape-item {
-          position: absolute;
-          left: 0; right: 0;
-          text-align: center;
-          font-size: 10px;
-          color: #00ff88;
-          height: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .pfd-tape-item::before {
-          content: '';
-          position: absolute;
-          right: 0;
-          top: 50%;
-          width: 6px;
-          height: 1px;
-          background: #00ff88;
-        }
-        .pfd-tape-left .pfd-tape-item::before {
-          right: auto;
-          left: 0;
+          box-shadow: 0 0 4px #00ff88;
         }
         @media (max-width: 900px) {
           .mcp-panel { flex-wrap: wrap; gap: 4px !important; padding: 4px 8px !important; }
@@ -367,254 +399,272 @@ export default function FlightSimulatorPage() {
       {/* Main Instrument Panel */}
       <div className="instrument-grid flex-1 grid grid-cols-12 gap-1.5 p-1.5 bg-[#0d0d0d] overflow-hidden min-h-0">
         
-        {/* PFD - Professional Attitude Indicator with Speed/Alt Tapes */}
+        {/* PFD - Primary Flight Display */}
         <div className="col-span-4 bg-black rounded border-2 border-[#1a1a1a] shadow-inner flex flex-col overflow-hidden min-h-0">
           <div className="text-center text-[8px] text-gray-500 tracking-widest py-0.5 border-b border-[#1a1a1a] flex-shrink-0">
             PRIMARY FLIGHT DISPLAY
           </div>
-          <div className="flex-1 flex p-1 overflow-hidden min-h-0 relative">
-            {/* Speed Tape (Left) */}
-            <div className="pfd-tape pfd-tape-left left-0 top-0 bottom-0 z-20">
-              {speedTapeValues.map((val, i) => {
-                const offset = (state.airspeed - val) * 2;
-                const y = 50 + offset;
-                if (y < -10 || y > 110) return null;
+          <div className="flex-1 relative overflow-hidden min-h-0">
+            {/* Full SVG PFD */}
+            <svg viewBox="0 0 300 400" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#1a4a7a" />
+                  <stop offset="100%" stopColor="#4a8aba" />
+                </linearGradient>
+                <linearGradient id="groundGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#8a6a20" />
+                  <stop offset="100%" stopColor="#4a3008" />
+                </linearGradient>
+                <clipPath id="attitudeClip">
+                  <circle cx="150" cy="180" r="95" />
+                </clipPath>
+              </defs>
+
+              {/* Speed Tape (Left) */}
+              <rect x="5" y="80" width="55" height="200" fill="#0a0a0a" stroke="#333" strokeWidth="1" />
+              {Array.from({ length: 11 }, (_, i) => {
+                const val = Math.round(state.airspeed - 50 + i * 10);
+                const y = 180 - (val - state.airspeed) * 2;
+                if (y < 80 || y > 280) return null;
                 return (
-                  <div key={val} className="pfd-tape-item" style={{ top: `${y}%`, transform: 'translateY(-50%)' }}>
-                    {val > 0 ? val : ''}
-                  </div>
+                  <g key={`spd-${i}`}>
+                    <line x1="50" y1={y} x2="55" y2={y} stroke="#00ff88" strokeWidth="1" />
+                    <text x="45" y={y + 3} textAnchor="end" fill="#00ff88" fontSize="9" fontFamily="monospace">
+                      {val > 0 ? val : ''}
+                    </text>
+                  </g>
                 );
               })}
               {/* Current speed box */}
-              <div className="absolute top-1/2 left-0 -translate-y-1/2 bg-black border-2 border-[#00ff88] px-1 py-0.5 z-30">
-                <span className="text-sm font-bold text-[#00ff88]">{Math.round(state.airspeed)}</span>
-              </div>
-            </div>
+              <rect x="5" y="170" width="55" height="20" fill="#000" stroke="#00ff88" strokeWidth="2" />
+              <text x="32" y="184" textAnchor="middle" fill="#00ff88" fontSize="14" fontWeight="bold" fontFamily="monospace">
+                {Math.round(state.airspeed)}
+              </text>
+              <text x="32" y="70" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">IAS</text>
+              <text x="32" y="300" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">KTS</text>
 
-            {/* Attitude Indicator (Center) */}
-            <div className="flex-1 mx-[52px] relative overflow-hidden">
-              {/* Circular attitude indicator */}
-              <div className="absolute inset-2 rounded-full border-2 border-[#333] overflow-hidden bg-[#0a0a0a]">
-                {/* Sky/Ground with roll and pitch */}
-                <div 
-                  className="absolute inset-[-100%]" 
-                  style={{ 
-                    transform: `rotate(${state.roll}deg) translateY(${state.pitch * 4}px)`,
-                    transformOrigin: 'center center'
-                  }}
-                >
-                  {/* Sky */}
-                  <div className="absolute top-0 left-0 right-0 h-1/2" 
-                    style={{ background: 'linear-gradient(180deg, #1a4a7a 0%, #2a6a9a 50%, #4a8aba 100%)' }} />
-                  {/* Ground */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1/2" 
-                    style={{ background: 'linear-gradient(180deg, #8a6a20 0%, #6a4a10 50%, #4a3008 100%)' }} />
-                  {/* Horizon line */}
-                  <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-white -translate-y-[1px]" />
+              {/* Attitude Indicator (Center) */}
+              <circle cx="150" cy="180" r="98" fill="none" stroke="#333" strokeWidth="3" />
+              <g clipPath="url(#attitudeClip)">
+                {/* Sky/Ground with rotation */}
+                <g transform={`rotate(${state.roll}, 150, 180) translate(0, ${state.pitch * 3})`}>
+                  <rect x="0" y="0" width="300" height="180" fill="url(#skyGrad)" />
+                  <rect x="0" y="180" width="300" height="220" fill="url(#groundGrad)" />
+                  <line x1="0" y1="180" x2="300" y2="180" stroke="white" strokeWidth="2" />
                   {/* Pitch ladder */}
                   {[-15, -10, -5, 5, 10, 15].map(p => (
-                    <div key={p} className="absolute left-1/2 -translate-x-1/2 flex items-center"
-                      style={{ top: `${50 - p * 2.5}%` }}>
-                      <div className="w-1 h-px bg-white" />
-                      <span className="text-[8px] text-white mx-1">{Math.abs(p)}</span>
-                      <div className="w-1 h-px bg-white" />
-                    </div>
+                    <g key={`pitch-${p}`}>
+                      <line x1="120" y1={180 - p * 4} x2="135" y2={180 - p * 4} stroke="white" strokeWidth="1" />
+                      <line x1="165" y1={180 - p * 4} x2="180" y2={180 - p * 4} stroke="white" strokeWidth="1" />
+                      <text x="115" y={183 - p * 4} textAnchor="end" fill="white" fontSize="8" fontFamily="monospace">
+                        {Math.abs(p)}
+                      </text>
+                      <text x="185" y={183 - p * 4} textAnchor="start" fill="white" fontSize="8" fontFamily="monospace">
+                        {Math.abs(p)}
+                      </text>
+                    </g>
                   ))}
-                </div>
+                </g>
+              </g>
 
-                {/* Bank angle marks (fixed, rotate with roll for visual) */}
-                <div className="absolute inset-0" style={{ transform: `rotate(${state.roll}deg)` }}>
-                  {[0, 10, 20, 30, 45, 60].map(angle => (
-                    <div key={`l${angle}`} className="absolute top-2 left-1/2 origin-bottom"
-                      style={{ transform: `translateX(-50%) rotate(${-angle}deg)`, height: '45%' }}>
-                      <div className="w-px h-2 bg-white/60 mx-auto" />
-                    </div>
-                  ))}
-                  {[10, 20, 30, 45, 60].map(angle => (
-                    <div key={`r${angle}`} className="absolute top-2 left-1/2 origin-bottom"
-                      style={{ transform: `translateX(-50%) rotate(${angle}deg)`, height: '45%' }}>
-                      <div className="w-px h-2 bg-white/60 mx-auto" />
-                    </div>
-                  ))}
-                </div>
+              {/* Bank angle marks (fixed outer ring) */}
+              {[0, 10, 20, 30, 45, 60].map(angle => (
+                <g key={`bank-l-${angle}`} transform={`rotate(${-angle}, 150, 180)`}>
+                  <line x1="150" y1="85" x2="150" y2="92" stroke="white" strokeWidth="1.5" />
+                </g>
+              ))}
+              {[10, 20, 30, 45, 60].map(angle => (
+                <g key={`bank-r-${angle}`} transform={`rotate(${angle}, 150, 180)`}>
+                  <line x1="150" y1="85" x2="150" y2="92" stroke="white" strokeWidth="1.5" />
+                </g>
+              ))}
+              {/* Bank pointer */}
+              <g transform={`rotate(${state.roll}, 150, 180)`}>
+                <polygon points="150,88 146,95 154,95" fill="white" />
+              </g>
+              {/* Fixed triangle at top */}
+              <polygon points="150,82 146,76 154,76" fill="#ffcc00" />
 
-                {/* Fixed aircraft symbol */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                  <svg width="80" height="40" viewBox="0 0 80 40">
-                    {/* Wings */}
-                    <rect x="5" y="18" width="25" height="4" fill="#ffcc00" />
-                    <rect x="50" y="18" width="25" height="4" fill="#ffcc00" />
-                    {/* Center dot */}
-                    <circle cx="40" cy="20" r="4" fill="none" stroke="#ffcc00" strokeWidth="2" />
-                    {/* Tail */}
-                    <rect x="37" y="28" width="6" height="8" fill="#ffcc00" />
-                  </svg>
-                </div>
+              {/* Aircraft symbol (fixed) */}
+              <g>
+                {/* Wings */}
+                <rect x="95" y="177" width="40" height="6" fill="#ffcc00" />
+                <rect x="165" y="177" width="40" height="6" fill="#ffcc00" />
+                {/* Center */}
+                <circle cx="150" cy="180" r="6" fill="none" stroke="#ffcc00" strokeWidth="2" />
+                {/* Tail */}
+                <rect x="147" y="190" width="6" height="12" fill="#ffcc00" />
+              </g>
 
-                {/* Roll indicator triangle */}
-                <div className="absolute top-1 left-1/2 -translate-x-1/2">
-                  <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-white" />
-                </div>
-              </div>
-
-              {/* Flight data below attitude */}
-              <div className="absolute bottom-0 left-0 right-0 flex justify-between px-2 pb-1">
-                <div className="bg-black/80 px-2 py-0.5 rounded border border-[#333]">
-                  <span className="text-[9px] text-[#00ff88] font-bold">HDG {String(Math.round(state.heading)).padStart(3, '0')}°</span>
-                </div>
-                <div className="bg-black/80 px-2 py-0.5 rounded border border-[#333]">
-                  <span className="text-[9px] text-[#00ff88] font-bold">{getHeadingDir(state.heading)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Altitude Tape (Right) */}
-            <div className="pfd-tape right-0 top-0 bottom-0 z-20">
-              {altTapeValues.map((val, i) => {
-                const offset = (state.altitude - val) * 0.1;
-                const y = 50 - offset;
-                if (y < -10 || y > 110) return null;
+              {/* Altitude Tape (Right) */}
+              <rect x="240" y="80" width="55" height="200" fill="#0a0a0a" stroke="#333" strokeWidth="1" />
+              {Array.from({ length: 11 }, (_, i) => {
+                const val = Math.round((state.altitude - 500 + i * 100) / 100) * 100;
+                const y = 180 - (val - state.altitude) * 0.1;
+                if (y < 80 || y > 280) return null;
                 return (
-                  <div key={val} className="pfd-tape-item" style={{ top: `${y}%`, transform: 'translateY(-50%)' }}>
-                    {val > 0 ? Math.round(val / 100) * 100 : ''}
-                  </div>
+                  <g key={`alt-${i}`}>
+                    <line x1="240" y1={y} x2="245" y2={y} stroke="#00ff88" strokeWidth="1" />
+                    <text x="250" y={y + 3} textAnchor="start" fill="#00ff88" fontSize="9" fontFamily="monospace">
+                      {val > 0 ? Math.round(val / 100) : ''}
+                    </text>
+                  </g>
                 );
               })}
               {/* Current altitude box */}
-              <div className="absolute top-1/2 right-0 -translate-y-1/2 bg-black border-2 border-[#00ff88] px-1 py-0.5 z-30">
-                <span className="text-sm font-bold text-[#00ff88]">{Math.round(state.altitude).toLocaleString()}</span>
-              </div>
-            </div>
+              <rect x="240" y="170" width="55" height="20" fill="#000" stroke="#00ff88" strokeWidth="2" />
+              <text x="267" y="184" textAnchor="middle" fill="#00ff88" fontSize="12" fontWeight="bold" fontFamily="monospace">
+                {Math.round(state.altitude).toLocaleString()}
+              </text>
+              <text x="267" y="70" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">ALT</text>
+              <text x="267" y="300" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">FT</text>
 
-            {/* VS indicator (far right) */}
-            <div className="absolute right-0 top-0 bottom-0 w-6 bg-black/80 border-l border-[#333] flex flex-col items-center justify-center z-10">
-              <span className="text-[7px] text-gray-500">VS</span>
-              <div className={`text-[9px] font-bold ${state.verticalSpeed > 100 ? 'text-green-400' : state.verticalSpeed < -100 ? 'text-amber-400' : 'text-gray-400'}`}>
+              {/* Vertical Speed Indicator (Far right) */}
+              <rect x="298" y="120" width="12" height="120" fill="#0a0a0a" stroke="#333" strokeWidth="1" />
+              <line x1="298" y1="180" x2="310" y2="180" stroke="#6a8a6a" strokeWidth="1" />
+              {[-2000, -1000, 0, 1000, 2000].map(vs => {
+                const y = 180 - (vs / 2000) * 50;
+                return (
+                  <g key={`vs-${vs}`}>
+                    <line x1="298" y1={y} x2="302" y2={y} stroke="#6a8a6a" strokeWidth="1" />
+                  </g>
+                );
+              })}
+              {/* VS needle */}
+              <line 
+                x1="304" y1="180" 
+                x2="304" y2={180 - Math.max(-50, Math.min(50, state.verticalSpeed / 40))} 
+                stroke={state.verticalSpeed > 100 ? '#00ff88' : state.verticalSpeed < -100 ? '#ffaa00' : '#6a8a6a'} 
+                strokeWidth="2" 
+              />
+              <text x="304" y="115" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">VS</text>
+              <text x="304" y="250" textAnchor="middle" fill={state.verticalSpeed > 100 ? '#00ff88' : state.verticalSpeed < -100 ? '#ffaa00' : '#6a8a6a'} fontSize="8" fontFamily="monospace">
                 {state.verticalSpeed > 0 ? '+' : ''}{Math.round(state.verticalSpeed / 100) * 100}
-              </div>
-              <div className="w-4 h-px bg-gray-500 mt-0.5" />
-              <div className="text-[6px] text-gray-500">FPM</div>
-            </div>
+              </text>
+
+              {/* Heading display at bottom */}
+              <rect x="100" y="310" width="100" height="30" fill="#0a0a0a" stroke="#333" strokeWidth="1" rx="2" />
+              <text x="150" y="325" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">HDG</text>
+              <text x="150" y="338" textAnchor="middle" fill="#00ff88" fontSize="14" fontWeight="bold" fontFamily="monospace">
+                {String(Math.round(state.heading)).padStart(3, '0')}° {getHeadingDir(state.heading)}
+              </text>
+
+              {/* Flight mode annunciations */}
+              <text x="150" y="370" textAnchor="middle" fill="#00ff88" fontSize="9" fontFamily="monospace">
+                {state.autopilotEnabled ? 'A/P ENG' : 'MANUAL'} | {state.autothrottleEnabled ? 'A/T ENG' : 'MAN THR'}
+              </text>
+            </svg>
           </div>
         </div>
 
-        {/* ND - Combined Heading + Traffic Radar */}
+        {/* ND - Navigation Display (Heading + Traffic Combined) */}
         <div className="col-span-4 bg-black rounded border-2 border-[#1a1a1a] shadow-inner flex flex-col overflow-hidden min-h-0">
           <div className="text-center text-[8px] text-gray-500 tracking-widest py-0.5 border-b border-[#1a1a1a] flex-shrink-0">
             NAVIGATION DISPLAY
           </div>
-          <div className="flex-1 flex flex-col p-2 gap-2 overflow-hidden min-h-0">
-            {/* Heading display */}
-            <div className="eicas-display p-2 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <span className="eicas-label">HEADING</span>
-                <span className="eicas-value text-xl font-bold">{String(Math.round(state.heading)).padStart(3, '0')}° {getHeadingDir(state.heading)}</span>
-              </div>
-            </div>
+          <div className="flex-1 relative overflow-hidden min-h-0">
+            <svg viewBox="0 0 300 350" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+              {/* Radar circles */}
+              <circle cx="150" cy="160" r="120" fill="none" stroke="#1a3a1a" strokeWidth="1" />
+              <circle cx="150" cy="160" r="80" fill="none" stroke="#1a3a1a" strokeWidth="1" strokeDasharray="2,2" />
+              <circle cx="150" cy="160" r="40" fill="none" stroke="#1a3a1a" strokeWidth="1" strokeDasharray="2,2" />
+              
+              {/* Cross lines */}
+              <line x1="30" y1="160" x2="270" y2="160" stroke="#1a3a1a" strokeWidth="1" />
+              <line x1="150" y1="40" x2="150" y2="280" stroke="#1a3a1a" strokeWidth="1" />
 
-            {/* Combined Radar Display (Heading + Traffic) */}
-            <div className="flex-1 eicas-display p-2 min-h-0 relative overflow-hidden">
-              <div className="absolute inset-3 flex items-center justify-center">
-                <div className="relative w-full h-full max-w-[220px] max-h-[220px] aspect-square">
-                  {/* Range rings */}
-                  <div className="absolute inset-0 border border-green-400/30 rounded-full" />
-                  <div className="absolute inset-[20%] border border-green-400/20 rounded-full" />
-                  <div className="absolute inset-[40%] border border-green-400/15 rounded-full" />
-                  
-                  {/* Heading marks on outer ring */}
-                  {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(deg => {
-                    const relDeg = ((deg - state.heading + 540) % 360) - 180;
-                    const angle = (relDeg - 90) * Math.PI / 180;
-                    const x = 50 + Math.cos(angle) * 48;
-                    const y = 50 + Math.sin(angle) * 48;
-                    const label = deg === 0 ? 'N' : deg === 90 ? 'E' : deg === 180 ? 'S' : deg === 270 ? 'W' : '';
-                    return (
-                      <div key={deg} className="absolute" style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}>
-                        {label && <span className="text-[9px] text-green-400 font-bold">{label}</span>}
-                        {!label && <div className="w-1 h-1 bg-green-400/50 rounded-full" />}
-                      </div>
-                    );
-                  })}
+              {/* Heading arc with marks */}
+              {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320, 330, 340, 350].map(deg => {
+                const relDeg = ((deg - state.heading + 540) % 360) - 180;
+                if (Math.abs(relDeg) > 90) return null;
+                const angle = (relDeg - 90) * Math.PI / 180;
+                const x1 = 150 + Math.cos(angle) * 115;
+                const y1 = 160 + Math.sin(angle) * 115;
+                const x2 = 150 + Math.cos(angle) * 120;
+                const y2 = 160 + Math.sin(angle) * 120;
+                const tx = 150 + Math.cos(angle) * 130;
+                const ty = 160 + Math.sin(angle) * 130;
+                const isMajor = deg % 30 === 0;
+                const label = deg === 0 ? 'N' : deg === 90 ? 'E' : deg === 180 ? 'S' : deg === 270 ? 'W' : '';
+                return (
+                  <g key={`hdg-${deg}`}>
+                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#00ff88" strokeWidth={isMajor ? 2 : 1} />
+                    {isMajor && (
+                      <text x={tx} y={ty + 3} textAnchor="middle" fill="#00ff88" fontSize="10" fontWeight="bold" fontFamily="monospace">
+                        {label || deg}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
 
-                  {/* Cross lines */}
-                  <div className="absolute top-1/2 left-[10%] right-[10%] h-px bg-green-400/20" />
-                  <div className="absolute left-1/2 top-[10%] bottom-[10%] w-px bg-green-400/20" />
-                  
-                  {/* Heading line (our direction) */}
-                  <div className="absolute top-[5%] left-1/2 -translate-x-1/2 w-0.5 h-[20%] bg-yellow-400" />
-                  <div className="absolute top-[5%] left-1/2 -translate-x-1/2 w-2 h-2 bg-yellow-400 rotate-45 -translate-y-1" />
+              {/* Heading line (our direction - top) */}
+              <line x1="150" y1="40" x2="150" y2="80" stroke="#ffcc00" strokeWidth="2" />
+              <polygon points="150,40 146,48 154,48" fill="#ffcc00" />
 
-                  {/* Our aircraft (center) */}
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <svg width="20" height="20" viewBox="0 0 20 20">
-                      <polygon points="10,2 14,14 10,12 6,14" fill="white" />
-                    </svg>
-                  </div>
+              {/* Our aircraft (center) */}
+              <g transform="translate(150, 160)">
+                <polygon points="0,-12 6,8 0,4 -6,8" fill="white" />
+              </g>
 
-                  {/* Traffic dots */}
-                  {trafficPositions.map(t => {
-                    const relBearing = getRelativeBearing(t.bearing);
-                    const distNorm = Math.min(1, t.distance / 50);
-                    const angle = (relBearing - 90) * Math.PI / 180;
-                    const x = 50 + Math.cos(angle) * distNorm * 42;
-                    const y = 50 + Math.sin(angle) * distNorm * 42;
-                    const altDiff = t.altitude - state.altitude;
-                    const altIndicator = altDiff > 1000 ? '↑' : altDiff < -1000 ? '↓' : '=';
-                    return (
-                      <div key={t.id} className="absolute" style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}>
-                        <div className="traffic-dot" />
-                        <div className="traffic-label -top-2.5 left-1/2 -translate-x-1/2">
-                          {t.callsign}{altIndicator}{Math.abs(Math.round(altDiff / 1000))}
-                        </div>
-                      </div>
-                    );
-                  })}
+              {/* Traffic dots */}
+              {trafficPositions.map(t => {
+                const relBearing = getRelativeBearing(t.bearing);
+                if (Math.abs(relBearing) > 90) return null;
+                const distNorm = Math.min(1, t.distance / 50);
+                const angle = (relBearing - 90) * Math.PI / 180;
+                const x = 150 + Math.cos(angle) * distNorm * 100;
+                const y = 160 + Math.sin(angle) * distNorm * 100;
+                const altDiff = t.altitude - state.altitude;
+                const altIndicator = altDiff > 1000 ? '↑' : altDiff < -1000 ? '↓' : '=';
+                const altColor = Math.abs(altDiff) < 1000 ? '#ffaa00' : '#00ff88';
+                return (
+                  <g key={`traffic-${t.id}`}>
+                    <circle cx={x} cy={y} r="4" fill="#00ff88" style={{ filter: 'drop-shadow(0 0 3px #00ff88)' }} />
+                    <text x={x + 8} y={y - 4} fill="#00ff88" fontSize="7" fontFamily="monospace">
+                      {t.callsign}
+                    </text>
+                    <text x={x + 8} y={y + 4} fill={altColor} fontSize="7" fontFamily="monospace">
+                      {altIndicator}{Math.abs(Math.round(altDiff / 1000))}
+                    </text>
+                  </g>
+                );
+              })}
 
-                  {/* Range labels */}
-                  <div className="absolute top-[2%] left-1/2 -translate-x-1/2 text-[7px] text-green-400/60">50</div>
-                  <div className="absolute top-[22%] left-1/2 -translate-x-1/2 text-[7px] text-green-400/40">25</div>
-                </div>
-              </div>
-            </div>
+              {/* Range labels */}
+              <text x="150" y="52" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">50 NM</text>
+              <text x="150" y="92" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">25</text>
 
-            {/* Nav Info Row */}
-            <div className="grid grid-cols-4 gap-1 flex-shrink-0">
-              <div className="eicas-display p-1.5 text-center">
-                <div className="eicas-label">GS</div>
-                <div className="eicas-value text-base font-bold">{Math.round(state.groundSpeed)}</div>
-              </div>
-              <div className="eicas-display p-1.5 text-center">
-                <div className="eicas-label">TAS</div>
-                <div className="eicas-value text-base font-bold">{Math.round(state.airspeed / Math.sqrt(Math.max(0.1, 1 - state.altitude * 0.000006875 * 1.4)))}</div>
-              </div>
-              <div className="eicas-display p-1.5 text-center">
-                <div className="eicas-label">WIND</div>
-                <div className="eicas-value text-xs font-bold">{weather.windDir}°/{weather.windSpeed}</div>
-              </div>
-              <div className="eicas-display p-1.5 text-center">
-                <div className="eicas-label">TRAF</div>
-                <div className="eicas-value text-base font-bold">{trafficPositions.length}</div>
-              </div>
-            </div>
+              {/* Current heading display */}
+              <rect x="100" y="295" width="100" height="35" fill="#0a0a0a" stroke="#1a3a1a" strokeWidth="1" rx="2" />
+              <text x="150" y="310" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">HEADING</text>
+              <text x="150" y="325" textAnchor="middle" fill="#00ff88" fontSize="16" fontWeight="bold" fontFamily="monospace">
+                {String(Math.round(state.heading)).padStart(3, '0')}°
+              </text>
+
+              {/* Info row */}
+              <text x="50" y="345" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">GS {Math.round(state.groundSpeed)}</text>
+              <text x="150" y="345" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">TRAF {trafficPositions.length}</text>
+              <text x="250" y="345" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">WIND {weather.windDir}°/{weather.windSpeed}</text>
+            </svg>
           </div>
         </div>
 
-        {/* EICAS - Electronic Engine Display */}
+        {/* EICAS - Electronic Engine Display with Circular Gauges */}
         <div className="col-span-4 bg-black rounded border-2 border-[#1a1a1a] shadow-inner flex flex-col overflow-hidden min-h-0">
           <div className="text-center text-[8px] text-gray-500 tracking-widest py-0.5 border-b border-[#1a1a1a] flex-shrink-0">
             ENGINE INDICATION & CREW ALERTING
           </div>
-          <div className="flex-1 flex flex-col p-2 gap-1.5 overflow-y-auto min-h-0">
-            {/* Engine N1/N2/N3 Display */}
+          <div className="flex-1 flex flex-col p-2 gap-2 overflow-y-auto min-h-0">
+            {/* Engine N1 Circular Gauges */}
             <div className="grid grid-cols-2 gap-2 flex-shrink-0">
               {[1, 2].map(engNum => {
                 const n1 = engNum === 1 ? state.engine1N1 : state.engine2N1;
-                const n2 = Math.min(100, n1 * 1.05);
-                const n3 = Math.min(100, n1 * 0.95);
                 const enabled = engNum === 1 ? state.engine1Enabled : state.engine2Enabled;
                 return (
-                  <div key={engNum} className="eicas-display p-2">
-                    <div className="flex items-center justify-between mb-1">
+                  <div key={engNum} className="eicas-display p-2 flex flex-col items-center">
+                    <div className="flex items-center justify-between w-full mb-1">
                       <span className="eicas-label">ENG {engNum}</span>
                       <button
                         onClick={() => dispatch(engNum === 1 ? 'TOGGLE_ENGINE_1' : 'TOGGLE_ENGINE_2')}
@@ -623,35 +673,20 @@ export default function FlightSimulatorPage() {
                         }`}
                       >{enabled ? 'ON' : 'OFF'}</button>
                     </div>
-                    <div className="space-y-1">
-                      <div>
-                        <div className="flex justify-between text-[8px]">
-                          <span className="eicas-label">N1</span>
-                          <span className="eicas-value font-bold">{n1.toFixed(1)}%</span>
-                        </div>
-                        <div className="eicas-bar">
-                          <div className="eicas-bar-fill" style={{ width: `${n1}%` }} />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-[8px]">
-                          <span className="eicas-label">N2</span>
-                          <span className="eicas-value font-bold">{n2.toFixed(1)}%</span>
-                        </div>
-                        <div className="eicas-bar">
-                          <div className="eicas-bar-fill" style={{ width: `${n2}%` }} />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-[8px]">
-                          <span className="eicas-label">N3</span>
-                          <span className="eicas-value font-bold">{n3.toFixed(1)}%</span>
-                        </div>
-                        <div className="eicas-bar">
-                          <div className="eicas-bar-fill" style={{ width: `${n3}%` }} />
-                        </div>
-                      </div>
-                    </div>
+                    <CircularGauge value={n1} max={100} label="N1" unit="%" warning={85} danger={95} />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* N2/N3 Circular Gauges */}
+            <div className="grid grid-cols-2 gap-2 flex-shrink-0">
+              {[1, 2].map(engNum => {
+                const n1 = engNum === 1 ? state.engine1N1 : state.engine2N1;
+                const n2 = Math.min(100, n1 * 1.05);
+                return (
+                  <div key={`n2-${engNum}`} className="eicas-display p-2 flex flex-col items-center">
+                    <CircularGauge value={n2} max={100} label={`ENG${engNum} N2`} unit="%" warning={90} danger={98} />
                   </div>
                 );
               })}
@@ -675,23 +710,34 @@ export default function FlightSimulatorPage() {
               </div>
             </div>
 
-            {/* Engine Parameters */}
+            {/* Engine Parameters - Circular Gauges */}
             <div className="eicas-display p-2 flex-shrink-0">
-              <div className="eicas-label mb-1">ENGINE PARAMETERS</div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <div className="eicas-label">EGT</div>
-                  <div className="eicas-value text-sm font-bold">{Math.round(400 + state.engine1N1 * 3)}°C</div>
-                </div>
-                <div>
-                  <div className="eicas-label">OIL PRESS</div>
-                  <div className="eicas-value text-sm font-bold">{Math.round(40 + state.engine1N1 * 0.3)}</div>
-                  <div className="text-[7px] text-gray-500">PSI</div>
-                </div>
-                <div>
-                  <div className="eicas-label">OIL TEMP</div>
-                  <div className="eicas-value text-sm font-bold">{Math.round(60 + state.engine1N1 * 0.2)}°C</div>
-                </div>
+              <div className="eicas-label mb-2 text-center">ENGINE PARAMETERS</div>
+              <div className="grid grid-cols-3 gap-1">
+                <CircularGauge 
+                  value={400 + state.engine1N1 * 3} 
+                  max={900} 
+                  label="EGT" 
+                  unit="°C"
+                  warning={75}
+                  danger={90}
+                />
+                <CircularGauge 
+                  value={40 + state.engine1N1 * 0.3} 
+                  max={80} 
+                  label="OIL" 
+                  unit="PSI"
+                  warning={80}
+                  danger={90}
+                />
+                <CircularGauge 
+                  value={60 + state.engine1N1 * 0.2} 
+                  max={120} 
+                  label="OIL" 
+                  unit="°C"
+                  warning={75}
+                  danger={90}
+                />
               </div>
             </div>
 
@@ -735,25 +781,6 @@ export default function FlightSimulatorPage() {
                 <div className="flex justify-between">
                   <span className="eicas-label">A/T</span>
                   <span className={state.autothrottleEnabled ? 'eicas-value' : 'text-gray-500'}>{state.autothrottleEnabled ? 'ENG' : 'OFF'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Weather Info */}
-            <div className="eicas-display p-2 flex-shrink-0">
-              <div className="eicas-label mb-1">WEATHER</div>
-              <div className="grid grid-cols-3 gap-2 text-center text-[9px]">
-                <div>
-                  <div className="eicas-label">TYPE</div>
-                  <div className="eicas-value font-bold">{weather.type.toUpperCase()}</div>
-                </div>
-                <div>
-                  <div className="eicas-label">VIS</div>
-                  <div className="eicas-value font-bold">{(weather.visibility / 1000).toFixed(0)}km</div>
-                </div>
-                <div>
-                  <div className="eicas-label">CLOUDS</div>
-                  <div className="eicas-value font-bold">{weather.clouds}/8</div>
                 </div>
               </div>
             </div>
