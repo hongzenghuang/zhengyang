@@ -42,27 +42,29 @@ export function useKeyboardControls({ dispatch, enabled = true }: UseKeyboardCon
       }
 
       const gameKeys = ['w', 's', 'g', 'p', 't', '1', '2', '[', ']', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-      if (gameKeys.includes(e.key)) {
+      const key = e.key;
+      const keyLower = key.toLowerCase();
+      
+      if (gameKeys.includes(key) || gameKeys.map(k => k.toLowerCase()).includes(keyLower)) {
         e.preventDefault();
       }
 
       let action: ControlAction | null = null;
 
-      switch (e.key.toLowerCase()) {
-        case 'w': action = 'THROTTLE_UP'; break;
-        case 's': action = 'THROTTLE_DOWN'; break;
-        case 'g': action = 'TOGGLE_GEAR'; break;
-        case 'p': action = 'TOGGLE_AUTOPILOT'; break;
-        case 't': action = 'TOGGLE_AUTOTHROTTLE'; break;
-        case '1': action = 'TOGGLE_ENGINE_1'; break;
-        case '2': action = 'TOGGLE_ENGINE_2'; break;
-        case '[': action = 'FLAPS_UP'; break;
-        case ']': action = 'FLAPS_DOWN'; break;
-        case 'arrowup': action = 'PITCH_UP'; break;
-        case 'arrowdown': action = 'PITCH_DOWN'; break;
-        case 'arrowleft': action = 'ROLL_LEFT'; break;
-        case 'arrowright': action = 'ROLL_RIGHT'; break;
-      }
+      // Handle both lowercase and special keys
+      if (keyLower === 'w') action = 'THROTTLE_UP';
+      else if (keyLower === 's') action = 'THROTTLE_DOWN';
+      else if (keyLower === 'g') action = 'TOGGLE_GEAR';
+      else if (keyLower === 'p') action = 'TOGGLE_AUTOPILOT';
+      else if (keyLower === 't') action = 'TOGGLE_AUTOTHROTTLE';
+      else if (key === '1') action = 'TOGGLE_ENGINE_1';
+      else if (key === '2') action = 'TOGGLE_ENGINE_2';
+      else if (key === '[') action = 'FLAPS_UP';
+      else if (key === ']') action = 'FLAPS_DOWN';
+      else if (key === 'ArrowUp') action = 'PITCH_UP';
+      else if (key === 'ArrowDown') action = 'PITCH_DOWN';
+      else if (key === 'ArrowLeft') action = 'ROLL_LEFT';
+      else if (key === 'ArrowRight') action = 'ROLL_RIGHT';
 
       if (!action) return;
 

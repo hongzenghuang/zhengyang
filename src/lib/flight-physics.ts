@@ -56,22 +56,24 @@ export function updateFlightPhysics(
   const newState = { ...state };
   const dt = Math.min(deltaTime, 0.05); // Cap delta time for stability
 
-  // Calculate thrust (throttle is 0-100, convert to 0-1)
-  const throttleNorm = state.throttle / 100;
-  const engine1Thrust = state.engine1Enabled ? throttleNorm * MAX_THRUST_PER_ENGINE : 0;
-  const engine2Thrust = state.engine2Enabled ? throttleNorm * MAX_THRUST_PER_ENGINE : 0;
-  const totalThrust = engine1Thrust + engine2Thrust;
-
   // Update N1 based on throttle (direct mapping with fast response)
   // N1 = throttle * 0.85 + 15 (idle at 15%, max at 100%)
   const targetN1 = state.throttle * 0.85 + 15;
-  const n1Rate = 5; // N1 change rate (units per second)
+  const n1Rate = 3; // N1 change rate (units per second) - slower for smoother response
   newState.engine1N1 = state.engine1Enabled 
     ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, n1Rate * dt)
     : Math.max(0, state.engine1N1 - dt * 10);
   newState.engine2N1 = state.engine2Enabled 
     ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, n1Rate * dt)
     : Math.max(0, state.engine2N1 - dt * 10);
+
+  // Calculate thrust based on N1 (not direct throttle) for smoother acceleration
+  // N1 ranges from 15% (idle) to 100% (TOGA), so normalize to 0-1 range
+  const n1Norm1 = Math.max(0, (newState.engine1N1 - 15) / 85); // 15% idle, 100% max
+  const n1Norm2 = Math.max(0, (newState.engine2N1 - 15) / 85);
+  const engine1Thrust = state.engine1Enabled ? n1Norm1 * MAX_THRUST_PER_ENGINE : 0;
+  const engine2Thrust = state.engine2Enabled ? n1Norm2 * MAX_THRUST_PER_ENGINE : 0;
+  const totalThrust = engine1Thrust + engine2Thrust;
 
   // Convert IAS to TAS for aerodynamic calculations
   const densityRatio = getDensityRatio(state.altitude);
