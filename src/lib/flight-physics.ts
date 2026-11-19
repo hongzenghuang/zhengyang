@@ -3,10 +3,10 @@ import { AircraftState } from './types';
 // Physics constants
 const GRAVITY = 32.174; // ft/s^2
 const AIR_DENSITY_SEA_LEVEL = 0.002377; // slug/ft^3
-const WING_AREA = 4605; // ft^2 (B777-300ER)
+const WING_AREA = 4605; // ft^2 (B777-9)
 const CRUISE_WEIGHT = 480000; // lbf (typical cruise weight, not max takeoff)
 const MASS = CRUISE_WEIGHT / GRAVITY; // slug
-const MAX_THRUST_PER_ENGINE = 115000; // lbf per engine
+const MAX_THRUST_PER_ENGINE = 115000; // lbf per engine (GE9X)
 
 // Calculate air density based on altitude (ISA model)
 function getAirDensity(altitude: number): number {
@@ -64,7 +64,7 @@ export function updateFlightPhysics(
 
   // Update N1 based on throttle (smooth transition)
   const targetN1 = state.throttle * 0.85 + 15;
-  const n1Rate = 20; // N1 change rate per second
+  const n1Rate = 40; // N1 change rate per second (faster spool-up)
   newState.engine1N1 = state.engine1Enabled 
     ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, n1Rate * dt / 100)
     : Math.max(0, state.engine1N1 - dt * 10);
@@ -98,7 +98,8 @@ export function updateFlightPhysics(
   const thrustForward = totalThrust * Math.cos(pitchRad);
   const dragForce = drag;
   const gravityForward = weight * Math.sin(pitchRad);
-  const groundFriction = isOnGround ? velocityFtS * 500 : 0; // Ground friction proportional to speed
+  // Rolling friction: ~2.5% of weight (realistic for aircraft tires on runway)
+  const groundFriction = isOnGround ? weight * 0.025 : 0;
   const netForceForward = thrustForward - dragForce - gravityForward - groundFriction;
   const accelerationForward = netForceForward / MASS;
 
