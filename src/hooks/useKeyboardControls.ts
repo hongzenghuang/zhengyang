@@ -16,6 +16,7 @@ const TOGGLE_ACTIONS = new Set([
   'TOGGLE_AUTOTHROTTLE',
   'TOGGLE_ENGINE_1',
   'TOGGLE_ENGINE_2',
+  'TOGGLE_REVERSE_THRUST',
   'FLAPS_UP',
   'FLAPS_DOWN'
 ]);
@@ -41,26 +42,31 @@ export function useKeyboardControls({ dispatch, enabled = true }: UseKeyboardCon
         return;
       }
 
-      const gameKeys = ['w', 's', 'g', 'p', 't', '1', '2', '[', ']', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
       const key = e.key;
       const keyLower = key.toLowerCase();
       
-      if (gameKeys.includes(key) || gameKeys.map(k => k.toLowerCase()).includes(keyLower)) {
+      const gameKeys = ['w', 's', 'g', 'p', 't', 'r', '1', '2', '[', ']'];
+      const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+      
+      if (gameKeys.includes(keyLower) || arrowKeys.includes(key)) {
         e.preventDefault();
+        e.stopPropagation();
       }
 
       let action: ControlAction | null = null;
 
-      // Handle both lowercase and special keys
+      // Letter keys (case-insensitive)
       if (keyLower === 'w') action = 'THROTTLE_UP';
       else if (keyLower === 's') action = 'THROTTLE_DOWN';
       else if (keyLower === 'g') action = 'TOGGLE_GEAR';
       else if (keyLower === 'p') action = 'TOGGLE_AUTOPILOT';
       else if (keyLower === 't') action = 'TOGGLE_AUTOTHROTTLE';
+      else if (keyLower === 'r') action = 'TOGGLE_REVERSE_THRUST';
       else if (key === '1') action = 'TOGGLE_ENGINE_1';
       else if (key === '2') action = 'TOGGLE_ENGINE_2';
       else if (key === '[') action = 'FLAPS_UP';
       else if (key === ']') action = 'FLAPS_DOWN';
+      // Arrow keys (exact match, not lowercased)
       else if (key === 'ArrowUp') action = 'PITCH_UP';
       else if (key === 'ArrowDown') action = 'PITCH_DOWN';
       else if (key === 'ArrowLeft') action = 'ROLL_LEFT';

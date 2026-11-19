@@ -17,6 +17,7 @@ export interface AircraftState {
   engine1Enabled: boolean;
   engine2Enabled: boolean;
   throttle: number;        // Throttle position (0-100%)
+  reverseThrust: boolean;  // Reverse thrust engaged (ground only)
   
   // Systems
   gearDown: boolean;       // Landing gear status
@@ -44,6 +45,7 @@ export type ControlAction =
   | 'TOGGLE_AUTOTHROTTLE'
   | 'TOGGLE_ENGINE_1'
   | 'TOGGLE_ENGINE_2'
+  | 'TOGGLE_REVERSE_THRUST'
   | 'FLAPS_UP'
   | 'FLAPS_DOWN';
 

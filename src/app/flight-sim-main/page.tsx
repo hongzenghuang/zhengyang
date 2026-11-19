@@ -795,6 +795,10 @@ export default function FlightSimulatorPage() {
                   <span className="eicas-label">A/T</span>
                   <span className={state.autothrottleEnabled ? 'eicas-value' : 'text-gray-500'}>{state.autothrottleEnabled ? 'ENG' : 'OFF'}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="eicas-label">REV</span>
+                  <span className={state.reverseThrust ? 'text-amber-400' : 'text-gray-500'}>{state.reverseThrust ? 'ON' : 'OFF'}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -806,6 +810,7 @@ export default function FlightSimulatorPage() {
         <span className="text-gray-400">↑↓←→</span><span>姿态</span>
         <span className="text-gray-400">W/S</span><span>油门</span>
         <span className="text-gray-400">G</span><span>起落架</span>
+        <span className="text-gray-400">R</span><span>反推</span>
         <span className="text-gray-400">P</span><span>自动驾驶</span>
         <span className="text-gray-400">T</span><span>自动油门</span>
         <span className="text-gray-400">1/2</span><span>引擎</span>

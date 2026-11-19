@@ -41,6 +41,7 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
       newState = applyAutopilot(newState, deltaTime);
       newState = applyAutothrottle(newState, deltaTime);
 
+      stateRef.current = newState;
       setState(newState);
 
       audioSystem.updateEngineSound((newState.engine1N1 + newState.engine2N1) / 2);
@@ -61,74 +62,90 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
   const dispatch = useCallback((action: ControlAction) => {
     audioSystem.playClick();
     
-    setState(prev => {
-      const newState = { ...prev };
+    // CRITICAL: Update stateRef directly so physics engine sees changes immediately
+    const prev = stateRef.current;
+    const updates: Partial<AircraftState> = {};
 
-      switch (action) {
-        case 'THROTTLE_UP':
-          newState.throttle = Math.min(100, prev.throttle + 1);
-          break;
-        case 'THROTTLE_DOWN':
-          newState.throttle = Math.max(0, prev.throttle - 1);
-          break;
-        case 'PITCH_UP':
-          newState.pitch = Math.min(15, prev.pitch + 1);
-          break;
-        case 'PITCH_DOWN':
-          newState.pitch = Math.max(-15, prev.pitch - 1);
-          break;
-        case 'ROLL_LEFT':
-          newState.roll = Math.max(-30, prev.roll - 2);
-          break;
-        case 'ROLL_RIGHT':
-          newState.roll = Math.min(30, prev.roll + 2);
-          break;
-        case 'TOGGLE_GEAR':
-          newState.gearDown = !prev.gearDown;
-          break;
-        case 'TOGGLE_AUTOPILOT':
-          newState.autopilotEnabled = !prev.autopilotEnabled;
-          if (newState.autopilotEnabled) {
-            newState.targetHeading = Math.round(prev.heading);
-            newState.targetAltitude = Math.round(prev.altitude / 100) * 100;
-            newState.targetAirspeed = Math.round(prev.airspeed);
+    switch (action) {
+      case 'THROTTLE_UP':
+        updates.throttle = Math.min(100, prev.throttle + 1);
+        break;
+      case 'THROTTLE_DOWN':
+        updates.throttle = Math.max(0, prev.throttle - 1);
+        break;
+      case 'PITCH_UP':
+        updates.pitch = Math.min(15, prev.pitch + 1);
+        break;
+      case 'PITCH_DOWN':
+        updates.pitch = Math.max(-15, prev.pitch - 1);
+        break;
+      case 'ROLL_LEFT':
+        updates.roll = Math.max(-30, prev.roll - 2);
+        break;
+      case 'ROLL_RIGHT':
+        updates.roll = Math.min(30, prev.roll + 2);
+        break;
+      case 'TOGGLE_GEAR':
+        updates.gearDown = !prev.gearDown;
+        break;
+      case 'TOGGLE_AUTOPILOT':
+        updates.autopilotEnabled = !prev.autopilotEnabled;
+        if (!prev.autopilotEnabled) {
+          updates.targetHeading = Math.round(prev.heading);
+          updates.targetAltitude = Math.round(prev.altitude / 100) * 100;
+          updates.targetAirspeed = Math.round(prev.airspeed);
+        }
+        break;
+      case 'TOGGLE_AUTOTHROTTLE':
+        updates.autothrottleEnabled = !prev.autothrottleEnabled;
+        if (!prev.autothrottleEnabled) {
+          updates.targetAirspeed = Math.round(prev.airspeed);
+        }
+        break;
+      case 'TOGGLE_ENGINE_1':
+        updates.engine1Enabled = !prev.engine1Enabled;
+        break;
+      case 'TOGGLE_ENGINE_2':
+        updates.engine2Enabled = !prev.engine2Enabled;
+        break;
+      case 'TOGGLE_REVERSE_THRUST':
+        // Only allow reverse thrust on ground with throttle at idle
+        if (prev.altitude <= 0 && prev.gearDown) {
+          updates.reverseThrust = !prev.reverseThrust;
+          if (!prev.reverseThrust) {
+            // Engaging reverse: force throttle to 0
+            updates.throttle = 0;
           }
-          break;
-        case 'TOGGLE_AUTOTHROTTLE':
-          newState.autothrottleEnabled = !prev.autothrottleEnabled;
-          if (newState.autothrottleEnabled) {
-            newState.targetAirspeed = Math.round(prev.airspeed);
-          }
-          break;
-        case 'TOGGLE_ENGINE_1':
-          newState.engine1Enabled = !prev.engine1Enabled;
-          break;
-        case 'TOGGLE_ENGINE_2':
-          newState.engine2Enabled = !prev.engine2Enabled;
-          break;
-        case 'FLAPS_UP':
-          const flapSteps = [0, 1, 5, 15, 20, 25, 30];
-          const currentIdx = flapSteps.indexOf(prev.flapsAngle);
-          if (currentIdx > 0) {
-            newState.flapsAngle = flapSteps[currentIdx - 1];
-          }
-          break;
-        case 'FLAPS_DOWN':
-          const flapStepsDown = [0, 1, 5, 15, 20, 25, 30];
-          const currentIdxDown = flapStepsDown.indexOf(prev.flapsAngle);
-          if (currentIdxDown < flapStepsDown.length - 1) {
-            newState.flapsAngle = flapStepsDown[currentIdxDown + 1];
-          }
-          break;
+        }
+        break;
+      case 'FLAPS_UP': {
+        const flapSteps = [0, 1, 5, 15, 20, 25, 30];
+        const currentIdx = flapSteps.indexOf(prev.flapsAngle);
+        if (currentIdx > 0) {
+          updates.flapsAngle = flapSteps[currentIdx - 1];
+        }
+        break;
       }
+      case 'FLAPS_DOWN': {
+        const flapStepsDown = [0, 1, 5, 15, 20, 25, 30];
+        const currentIdxDown = flapStepsDown.indexOf(prev.flapsAngle);
+        if (currentIdxDown < flapStepsDown.length - 1) {
+          updates.flapsAngle = flapStepsDown[currentIdxDown + 1];
+        }
+        break;
+      }
+    }
 
-      return newState;
-    });
+    // Apply updates to both stateRef and React state
+    stateRef.current = { ...prev, ...updates };
+    setState(s => ({ ...s, ...updates }));
   }, []);
 
   // Direct throttle setter for slider
   const setThrottle = useCallback((value: number) => {
-    setState(prev => ({ ...prev, throttle: Math.max(0, Math.min(100, value)) }));
+    const clamped = Math.max(0, Math.min(100, value));
+    stateRef.current = { ...stateRef.current, throttle: clamped };
+    setState(prev => ({ ...prev, throttle: clamped }));
   }, []);
 
   const setTargetHeading = useCallback((heading: number) => {
