@@ -27,22 +27,23 @@ function getDensityRatio(altitude: number): number {
 function getLiftCoefficient(
   pitch: number, flapsAngle: number, airspeed: number, scenario: FlightScenario
 ): number {
-  // Redesigned for realistic flight performance
-  // Key: pitch directly affects lift coefficient strongly
-  // At pitch=10, flaps=15: CL≈2.0 (takeoff rotation)
-  // At pitch=2, flaps=0: CL≈0.6 (cruise)
-  const baseCL = 0.25;
-  const pitchCL = pitch * 0.15; // Stronger pitch effect
-  const flapsCL = flapsAngle * 0.05;
+  // Completely redesigned lift model for realistic performance
+  // Key insight: lift coefficient should be higher at cruise to maintain altitude
+  // At pitch=2, flaps=0, 250kts: CL≈1.2 (cruise)
+  // At pitch=10, flaps=15, 160kts: CL≈2.2 (takeoff)
+  
+  const baseCL = 0.8; // Higher base for cruise
+  const pitchCL = pitch * 0.12; // Pitch effect
+  const flapsCL = flapsAngle * 0.06; // Flaps effect
   
   // Icing reduces lift by up to 30%
   const icingPenalty = scenario === 'icing' ? 0.7 : 1.0;
   
   // Stall model: below stall speed, lift degrades
-  const stallSpeed = 120 - flapsAngle * 1.5;
+  const stallSpeed = 110 - flapsAngle * 1.2;
   const stallFactor = airspeed < stallSpeed ? Math.max(0.3, airspeed / stallSpeed) : 1;
   
-  return Math.max(-0.3, Math.min(3.0, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
+  return Math.max(0, Math.min(3.0, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
 }
 
 function getDragCoefficient(
@@ -215,10 +216,10 @@ export function updateFlightPhysics(
     yawFromAsymmetry = thrustDiff / MAX_THRUST_PER_ENGINE * 2; // degrees per frame
   }
 
-  // Forward forces - reduced gravity effect for better climb performance
+  // Forward forces - minimal gravity effect for stable climb
   const thrustForward = totalThrust * Math.cos(pitchRad);
-  // Gravity component along flight path - reduced to 40% for more realistic climb
-  const gravityForward = weight * Math.sin(pitchRad) * 0.4;
+  // Gravity component along flight path - very small to prevent excessive deceleration
+  const gravityForward = weight * Math.sin(pitchRad) * 0.15;
   const groundFriction = isOnGround ? weight * 0.02 : 0;
   const netForceForward = thrustForward - drag - gravityForward - groundFriction - reverseForce;
   const accelerationForward = netForceForward / MASS;
@@ -229,26 +230,26 @@ export function updateFlightPhysics(
   const newIAS = newTAS * Math.sqrt(Math.max(0.01, densityRatio));
   newState.airspeed = Math.max(0, newIAS);
 
-  // Vertical forces - improved for stable climb
+  // Vertical forces - stable and responsive climb
   if (isOnGround) {
     newState.verticalSpeed = 0;
     newState.altitude = 0;
   } else {
     // Lift acts perpendicular to wings
     const liftVertical = lift * Math.cos(rollRad);
-    // Add pitch component to vertical force (pitch up = more vertical lift)
-    const pitchLiftBoost = totalThrust * Math.sin(pitchRad) * 0.5;
+    // Thrust contributes to vertical force when pitched up
+    const thrustVertical = totalThrust * Math.sin(pitchRad) * 0.3;
     const gravityVertical = weight;
-    const netForceVertical = liftVertical + pitchLiftBoost - gravityVertical;
+    const netForceVertical = liftVertical + thrustVertical - gravityVertical;
     const verticalAcceleration = netForceVertical / MASS;
 
     // Responsive vertical speed changes
-    const vsChange = verticalAcceleration * 80 * dt;
+    const vsChange = verticalAcceleration * 70 * dt;
     newState.verticalSpeed = state.verticalSpeed + vsChange;
 
-    // Light damping only when very close to equilibrium
-    if (Math.abs(state.verticalSpeed) < 5 && Math.abs(verticalAcceleration) < 0.02) {
-      newState.verticalSpeed = newState.verticalSpeed * 0.95;
+    // Gentle damping to stabilize
+    if (Math.abs(state.verticalSpeed) < 10 && Math.abs(verticalAcceleration) < 0.05) {
+      newState.verticalSpeed = newState.verticalSpeed * 0.97;
     }
 
     newState.verticalSpeed = Math.max(-6000, Math.min(6000, newState.verticalSpeed));
