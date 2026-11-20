@@ -1,8 +1,6 @@
-// Audio system using Web Audio API
+// Audio system using Web Audio API - Engine sound removed per user request
 class AudioSystem {
   private audioContext: AudioContext | null = null;
-  private engineOscillator: OscillatorNode | null = null;
-  private engineGain: GainNode | null = null;
   private windGain: GainNode | null = null;
   private windNoise: AudioBufferSourceNode | null = null;
   private isInitialized = false;
@@ -17,17 +15,7 @@ class AudioSystem {
     try {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       
-      // Engine sound - low frequency oscillator
-      this.engineOscillator = this.audioContext.createOscillator();
-      this.engineGain = this.audioContext.createGain();
-      this.engineOscillator.type = 'sawtooth';
-      this.engineOscillator.frequency.value = 80;
-      this.engineGain.gain.value = 0;
-      this.engineOscillator.connect(this.engineGain);
-      this.engineGain.connect(this.audioContext.destination);
-      this.engineOscillator.start();
-      
-      // Wind noise - white noise
+      // Wind noise - white noise (only wind sound, no engine)
       const bufferSize = 2 * this.audioContext.sampleRate;
       const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
       const output = noiseBuffer.getChannelData(0);
@@ -57,16 +45,9 @@ class AudioSystem {
     }
   }
 
-  updateEngineSound(n1Percent: number) {
-    if (!this.isInitialized || !this.engineOscillator || !this.engineGain) return;
-    
-    // Map N1 to frequency (80-200 Hz)
-    const frequency = 80 + (n1Percent / 100) * 120;
-    this.engineOscillator.frequency.value = frequency;
-    
-    // Map N1 to volume (0-0.3)
-    const volume = (n1Percent / 100) * 0.3;
-    this.engineGain.gain.value = volume;
+  // Engine sound removed - no longer used
+  updateEngineSound(_n1Percent: number) {
+    // Intentionally empty - engine sound disabled per user request
   }
 
   updateWindSound(airspeed: number) {
@@ -114,9 +95,6 @@ class AudioSystem {
   }
 
   stop() {
-    if (this.engineOscillator) {
-      this.engineOscillator.stop();
-    }
     if (this.windNoise) {
       this.windNoise.stop();
     }

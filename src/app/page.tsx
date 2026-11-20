@@ -180,51 +180,169 @@ const tutorialSteps: TutorialStep[] = [
   },
 ];
 
-// SVG Animation Components
+// SVG Animation Components - Enhanced visuals
 function WelcomeAnimation() {
+  const [time, setTime] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTime(t => t + 1), 50);
+    return () => clearInterval(interval);
+  }, []);
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
       <defs>
         <linearGradient id="skyBg" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#0a1628" />
+          <stop offset="0%" stopColor="#020810" />
+          <stop offset="40%" stopColor="#0a1628" />
           <stop offset="100%" stopColor="#1a3a5c" />
         </linearGradient>
+        <radialGradient id="moonGlow" cx="85%" cy="15%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <filter id="strongGlow">
+          <feGaussianBlur stdDeviation="5" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
       </defs>
       <rect width="400" height="240" fill="url(#skyBg)" />
-      {/* Stars */}
-      {[...Array(20)].map((_, i) => (
-        <circle key={i} cx={20 + i * 19} cy={10 + (i * 37) % 100} r="1" fill="white" opacity={0.3 + (i % 3) * 0.2}>
-          <animate attributeName="opacity" values={`${0.2 + (i % 3) * 0.2};${0.6 + (i % 2) * 0.3};${0.2 + (i % 3) * 0.2}`} dur={`${2 + i % 3}s`} repeatCount="indefinite" />
+      <rect width="400" height="240" fill="url(#moonGlow)" />
+      {/* Aurora effect */}
+      <ellipse cx="100" cy="60" rx="80" ry="30" fill="#00ff88" opacity="0.03">
+        <animate attributeName="rx" values="80;120;80" dur="8s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.02;0.06;0.02" dur="4s" repeatCount="indefinite" />
+      </ellipse>
+      <ellipse cx="300" cy="40" rx="60" ry="25" fill="#4a8aba" opacity="0.04">
+        <animate attributeName="rx" values="60;100;60" dur="6s" repeatCount="indefinite" />
+      </ellipse>
+      {/* Stars with twinkle */}
+      {[...Array(40)].map((_, i) => (
+        <circle key={i} cx={10 + (i * 13) % 390} cy={5 + (i * 7) % 90} r={0.5 + (i % 3) * 0.5} fill="white" opacity={0.3}>
+          <animate attributeName="opacity" values={`${0.2 + (i % 4) * 0.15};${0.8 + (i % 2) * 0.2};${0.2 + (i % 4) * 0.15}`} dur={`${1.5 + (i % 5) * 0.5}s`} repeatCount="indefinite" />
         </circle>
       ))}
-      {/* 777-9 silhouette */}
-      <g transform="translate(200, 130)">
-        <animateTransform attributeName="transform" type="translate" values="200,130;200,125;200,130" dur="4s" repeatCount="indefinite" />
-        {/* Fuselage */}
-        <ellipse cx="0" cy="0" rx="80" ry="8" fill="#c0c8d0" />
-        {/* Wings */}
-        <polygon points="-20,-6 -60,-30 -55,-28 -15,-4" fill="#a0a8b0" />
-        <polygon points="20,-6 60,-30 55,-28 15,-4" fill="#a0a8b0" />
-        {/* Tail */}
-        <polygon points="-70,-2 -85,-25 -78,-22 -68,-2" fill="#a0a8b0" />
-        {/* Engines */}
-        <ellipse cx="-35" cy="4" rx="12" ry="5" fill="#808890" />
-        <ellipse cx="35" cy="4" rx="12" ry="5" fill="#808890" />
-        {/* Engine glow */}
-        <ellipse cx="-47" cy="4" rx="4" ry="3" fill="#ff8844" opacity="0.6">
-          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="0.5s" repeatCount="indefinite" />
-        </ellipse>
-        <ellipse cx="23" cy="4" rx="4" ry="3" fill="#ff8844" opacity="0.6">
-          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="0.5s" repeatCount="indefinite" />
-        </ellipse>
-        {/* Windows */}
-        {[...Array(12)].map((_, i) => (
-          <rect key={i} x={-50 + i * 8} y="-3" width="4" height="2" rx="1" fill="#88ccff" opacity="0.7" />
+      {/* Shooting star */}
+      <line x1={50 + (time * 3) % 400} y1={20 + (time * 2) % 60} x2={60 + (time * 3) % 400} y2={25 + (time * 2) % 60} stroke="white" strokeWidth="1.5" opacity={time % 80 < 10 ? 0.8 : 0}>
+        <animate attributeName="opacity" values="0;0.8;0" dur="4s" repeatCount="indefinite" />
+      </line>
+      {/* 777-9 detailed side view with more detail */}
+      <g transform="translate(200, 120)">
+        <animateTransform attributeName="transform" type="translate" values="200,120;200,115;200,120" dur="5s" repeatCount="indefinite" />
+        {/* Fuselage with gradient */}
+        <ellipse cx="0" cy="0" rx="90" ry="10" fill="#d0d8e0" />
+        <ellipse cx="0" cy="-2" rx="88" ry="6" fill="#e0e8f0" opacity="0.5" />
+        <ellipse cx="0" cy="2" rx="85" ry="4" fill="#a0a8b0" opacity="0.3" />
+        {/* Cockpit windows */}
+        <path d="M 82,-4 L 90,-2 L 88,0 L 80,-2 Z" fill="#88ccff" opacity="0.8" />
+        <path d="M 82,-4 L 90,-2 L 88,0 L 80,-2 Z" fill="none" stroke="#aaddff" strokeWidth="0.5" opacity="0.5" />
+        {/* Windows row with animation */}
+        {[...Array(18)].map((_, i) => (
+          <rect key={i} x={-70 + i * 8} y="-4" width="4" height="2.5" rx="1" fill="#88ccff" opacity="0.6">
+            <animate attributeName="opacity" values="0.4;0.9;0.4" dur={`${2 + i * 0.1}s`} repeatCount="indefinite" />
+          </rect>
         ))}
+        {/* Wings with winglets */}
+        <polygon points="-25,-8 -75,-38 -68,-35 -18,-6" fill="#b0b8c0" />
+        <polygon points="25,-8 75,-38 68,-35 18,-6" fill="#b0b8c0" />
+        {/* Wing tips (raked) with glow */}
+        <polygon points="-75,-38 -82,-42 -78,-38" fill="#a0a8b0" />
+        <polygon points="75,-38 82,-42 78,-38" fill="#a0a8b0" />
+        <circle cx="-80" cy="-40" r="2" fill="#ff0000" opacity="0.8">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="1s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="80" cy="-40" r="2" fill="#00ff00" opacity="0.8">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="1s" repeatCount="indefinite" />
+        </circle>
+        {/* Tail with airline colors */}
+        <polygon points="-78,-4 -92,-32 -85,-28 -75,-4" fill="#b0b8c0" />
+        <polygon points="-88,-30 -92,-32 -90,-28" fill="#0066cc" />
+        <polygon points="-85,-25 -90,-28 -88,-24" fill="#ffcc00" opacity="0.8" />
+        {/* Engines with detailed exhaust */}
+        <g transform="translate(-42, 6)">
+          <ellipse cx="0" cy="0" rx="14" ry="6" fill="#808890" />
+          <ellipse cx="0" cy="0" rx="12" ry="5" fill="#606870" />
+          <ellipse cx="0" cy="0" rx="10" ry="4" fill="#505860" />
+          {/* Fan blades */}
+          <circle cx="0" cy="0" r="4" fill="#404850" />
+          {[...Array(6)].map((_, i) => (
+            <line key={i} x1="0" y1="0" x2={Math.cos((i * 60 + time * 10) * Math.PI / 180) * 3.5} y2={Math.sin((i * 60 + time * 10) * Math.PI / 180) * 3.5} stroke="#606870" strokeWidth="0.8" />
+          ))}
+          {/* Exhaust glow - stronger */}
+          <ellipse cx="-16" cy="0" rx="8" ry="5" fill="#ff6600" opacity="0.6" filter="url(#strongGlow)">
+            <animate attributeName="opacity" values="0.4;0.8;0.4" dur="0.2s" repeatCount="indefinite" />
+          </ellipse>
+          <ellipse cx="-24" cy="0" rx="14" ry="4" fill="#ff4400" opacity="0.3" filter="url(#glow)">
+            <animate attributeName="rx" values="14;20;14" dur="0.4s" repeatCount="indefinite" />
+          </ellipse>
+          <ellipse cx="-35" cy="0" rx="20" ry="3" fill="#ff2200" opacity="0.15">
+            <animate attributeName="rx" values="20;28;20" dur="0.6s" repeatCount="indefinite" />
+          </ellipse>
+          {/* Heat shimmer */}
+          {[...Array(3)].map((_, i) => (
+            <circle key={i} cx={-20 - i * 8} cy={Math.sin(time * 0.2 + i) * 2} r={1 + i * 0.5} fill="#ffaa00" opacity={0.2 - i * 0.05}>
+              <animate attributeName="cy" values={`${-2 + i};${2 - i};${-2 + i}`} dur={`${0.5 + i * 0.2}s`} repeatCount="indefinite" />
+            </circle>
+          ))}
+        </g>
+        <g transform="translate(42, 6)">
+          <ellipse cx="0" cy="0" rx="14" ry="6" fill="#808890" />
+          <ellipse cx="0" cy="0" rx="12" ry="5" fill="#606870" />
+          <ellipse cx="0" cy="0" rx="10" ry="4" fill="#505860" />
+          <circle cx="0" cy="0" r="4" fill="#404850" />
+          {[...Array(6)].map((_, i) => (
+            <line key={i} x1="0" y1="0" x2={Math.cos((i * 60 + time * 10) * Math.PI / 180) * 3.5} y2={Math.sin((i * 60 + time * 10) * Math.PI / 180) * 3.5} stroke="#606870" strokeWidth="0.8" />
+          ))}
+          <ellipse cx="-16" cy="0" rx="8" ry="5" fill="#ff6600" opacity="0.6" filter="url(#strongGlow)">
+            <animate attributeName="opacity" values="0.4;0.8;0.4" dur="0.2s" repeatCount="indefinite" />
+          </ellipse>
+          <ellipse cx="-24" cy="0" rx="14" ry="4" fill="#ff4400" opacity="0.3" filter="url(#glow)">
+            <animate attributeName="rx" values="14;20;14" dur="0.4s" repeatCount="indefinite" />
+          </ellipse>
+          <ellipse cx="-35" cy="0" rx="20" ry="3" fill="#ff2200" opacity="0.15">
+            <animate attributeName="rx" values="20;28;20" dur="0.6s" repeatCount="indefinite" />
+          </ellipse>
+          {[...Array(3)].map((_, i) => (
+            <circle key={i} cx={-20 - i * 8} cy={Math.sin(time * 0.2 + i) * 2} r={1 + i * 0.5} fill="#ffaa00" opacity={0.2 - i * 0.05}>
+              <animate attributeName="cy" values={`${-2 + i};${2 - i};${-2 + i}`} dur={`${0.5 + i * 0.2}s`} repeatCount="indefinite" />
+            </circle>
+          ))}
+        </g>
+        {/* Contrails with fade */}
+        <line x1="-58" y1="6" x2="-140" y2="12" stroke="white" strokeWidth="2" opacity="0.2">
+          <animate attributeName="opacity" values="0.1;0.25;0.1" dur="2s" repeatCount="indefinite" />
+        </line>
+        <line x1="58" y1="6" x2="140" y2="12" stroke="white" strokeWidth="2" opacity="0.2">
+          <animate attributeName="opacity" values="0.1;0.25;0.1" dur="2s" repeatCount="indefinite" />
+        </line>
+        <line x1="-58" y1="6" x2="-180" y2="15" stroke="white" strokeWidth="1" opacity="0.1">
+          <animate attributeName="opacity" values="0.05;0.15;0.05" dur="3s" repeatCount="indefinite" />
+        </line>
+        <line x1="58" y1="6" x2="180" y2="15" stroke="white" strokeWidth="1" opacity="0.1">
+          <animate attributeName="opacity" values="0.05;0.15;0.05" dur="3s" repeatCount="indefinite" />
+        </line>
       </g>
-      {/* Title */}
-      <text x="200" y="200" textAnchor="middle" fill="#00ff88" fontSize="18" fontWeight="bold" fontFamily="monospace">BOEING 777-9</text>
-      <text x="200" y="220" textAnchor="middle" fill="#6a8a6a" fontSize="10" fontFamily="monospace">FLIGHT SIMULATOR</text>
+      {/* Title with strong glow */}
+      <text x="200" y="185" textAnchor="middle" fill="#00ff88" fontSize="22" fontWeight="bold" fontFamily="monospace" filter="url(#strongGlow)">BOEING 777-9</text>
+      <text x="200" y="205" textAnchor="middle" fill="#4a8a6a" fontSize="11" fontFamily="monospace" letterSpacing="4">FLIGHT SIMULATOR</text>
+      <text x="200" y="225" textAnchor="middle" fill="#3a6a5a" fontSize="9" fontFamily="monospace">GE9X × 2 | 426 PAX | 13,500 KM</text>
+      {/* Animated specs */}
+      <g transform="translate(200, 235)">
+        <text x="-80" y="0" textAnchor="middle" fill="#00ff88" fontSize="7" fontFamily="monospace" opacity="0.7">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
+          WINGSPAN 71.8m
+        </text>
+        <text x="0" y="0" textAnchor="middle" fill="#00ff88" fontSize="7" fontFamily="monospace" opacity="0.7">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" begin="0.5s" repeatCount="indefinite" />
+          MTOW 775,000 lb
+        </text>
+        <text x="80" y="0" textAnchor="middle" fill="#00ff88" fontSize="7" fontFamily="monospace" opacity="0.7">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" begin="1s" repeatCount="indefinite" />
+          MACH 0.84
+        </text>
+      </g>
     </svg>
   );
 }
@@ -236,45 +354,79 @@ function PitchAnimation() {
     return () => clearInterval(interval);
   }, []);
   const pitch = Math.sin(phase * Math.PI / 60) * 15;
+  const roll = Math.sin(phase * Math.PI / 40) * 8;
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
       <defs>
         <linearGradient id="pitchSky" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#1a4a7a" />
-          <stop offset="100%" stopColor="#4a8aba" />
+          <stop offset="0%" stopColor="#0a2a5a" />
+          <stop offset="100%" stopColor="#3a7aba" />
         </linearGradient>
         <linearGradient id="pitchGround" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#8a6a20" />
-          <stop offset="100%" stopColor="#4a3008" />
+          <stop offset="0%" stopColor="#8a7a30" />
+          <stop offset="100%" stopColor="#3a2a08" />
         </linearGradient>
+        <filter id="pitchGlow">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
       </defs>
-      <g transform={`rotate(${pitch}, 200, 120)`}>
-        <rect x="0" y="0" width="400" height="120" fill="url(#pitchSky)" />
-        <rect x="0" y="120" width="400" height="120" fill="url(#pitchGround)" />
-        <line x1="0" y1="120" x2="400" y2="120" stroke="white" strokeWidth="2" />
+      <g transform={`rotate(${roll}, 200, 120)`}>
+        <g transform={`translate(0, ${pitch * 2})`}>
+          <rect x="0" y="0" width="400" height="120" fill="url(#pitchSky)" />
+          <rect x="0" y="120" width="400" height="120" fill="url(#pitchGround)" />
+          <line x1="0" y1="120" x2="400" y2="120" stroke="white" strokeWidth="2" opacity="0.8" />
+          {/* Pitch ladder */}
+          {[-15, -10, -5, 5, 10, 15].map(p => (
+            <g key={p}>
+              <line x1="160" y1={120 - p * 3} x2="175" y2={120 - p * 3} stroke="white" strokeWidth="1" opacity="0.5" />
+              <line x1="225" y1={120 - p * 3} x2="240" y2={120 - p * 3} stroke="white" strokeWidth="1" opacity="0.5" />
+              <text x="155" y={123 - p * 3} textAnchor="end" fill="white" fontSize="7" fontFamily="monospace" opacity="0.5">{Math.abs(p)}</text>
+            </g>
+          ))}
+        </g>
       </g>
-      {/* Fixed aircraft */}
+      {/* Fixed aircraft symbol */}
       <g transform="translate(200, 120)">
-        <rect x="-40" y="-3" width="30" height="6" fill="#ffcc00" />
-        <rect x="10" y="-3" width="30" height="6" fill="#ffcc00" />
-        <circle cx="0" cy="0" r="5" fill="none" stroke="#ffcc00" strokeWidth="2" />
+        <rect x="-45" y="-3" width="35" height="6" fill="#ffcc00" rx="1" />
+        <rect x="10" y="-3" width="35" height="6" fill="#ffcc00" rx="1" />
+        <circle cx="0" cy="0" r="6" fill="none" stroke="#ffcc00" strokeWidth="2" />
+        <rect x="-2" y="6" width="4" height="10" fill="#ffcc00" rx="1" />
       </g>
+      {/* Bank angle marks */}
+      {[0, 10, 20, 30, 45].map(a => (
+        <g key={`bl-${a}`} transform={`rotate(${-a}, 200, 120)`}>
+          <line x1="200" y1="35" x2="200" y2="42" stroke="white" strokeWidth="1.5" />
+        </g>
+      ))}
+      {[10, 20, 30, 45].map(a => (
+        <g key={`br-${a}`} transform={`rotate(${a}, 200, 120)`}>
+          <line x1="200" y1="35" x2="200" y2="42" stroke="white" strokeWidth="1.5" />
+        </g>
+      ))}
+      {/* Bank pointer */}
+      <g transform={`rotate(${roll}, 200, 120)`}>
+        <polygon points="200,38 196,45 204,45" fill="white" />
+      </g>
+      <polygon points="200,32 196,26 204,26" fill="#ffcc00" />
       {/* Pitch indicator */}
-      <text x="350" y="30" textAnchor="end" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold">
-        PITCH {pitch.toFixed(1)}°
+      <rect x="320" y="10" width="70" height="35" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
+      <text x="355" y="25" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">PITCH</text>
+      <text x="355" y="40" textAnchor="middle" fill={pitch > 0 ? '#00ff88' : '#ffaa00'} fontSize="14" fontFamily="monospace" fontWeight="bold" filter="url(#pitchGlow)">
+        {pitch > 0 ? '+' : ''}{pitch.toFixed(1)}°
       </text>
-      {/* Arrow indicators */}
-      <g transform="translate(50, 60)">
-        <polygon points="0,-15 8,0 -8,0" fill="#00ff88" opacity={pitch > 0 ? 1 : 0.3}>
-          <animate attributeName="opacity" values={pitch > 0 ? "1;0.5;1" : "0.3;0.3;0.3"} dur="1s" repeatCount="indefinite" />
-        </polygon>
-        <text x="0" y="15" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">↑ 拉杆</text>
-      </g>
-      <g transform="translate(50, 180)">
-        <polygon points="0,15 8,0 -8,0" fill="#ffaa00" opacity={pitch < 0 ? 1 : 0.3}>
-          <animate attributeName="opacity" values={pitch < 0 ? "1;0.5;1" : "0.3;0.3;0.3"} dur="1s" repeatCount="indefinite" />
-        </polygon>
-        <text x="0" y="-8" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">↓ 推杆</text>
+      {/* Roll indicator */}
+      <rect x="10" y="10" width="70" height="35" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
+      <text x="45" y="25" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">BANK</text>
+      <text x="45" y="40" textAnchor="middle" fill={Math.abs(roll) > 5 ? '#ffaa00' : '#00ff88'} fontSize="14" fontFamily="monospace" fontWeight="bold" filter="url(#pitchGlow)">
+        {roll > 0 ? '+' : ''}{roll.toFixed(1)}°
+      </text>
+      {/* Control hints */}
+      <g transform="translate(200, 210)">
+        <rect x="-80" y="-12" width="160" height="24" rx="4" fill="#0a0a0a" stroke="#333" opacity="0.8" />
+        <text x="-60" y="4" fill="#00ff88" fontSize="9" fontFamily="monospace">↑ 拉杆</text>
+        <text x="-10" y="4" fill="#ffaa00" fontSize="9" fontFamily="monospace">↓ 推杆</text>
+        <text x="35" y="4" fill="#4a8aba" fontSize="9" fontFamily="monospace">← → 滚转</text>
       </g>
     </svg>
   );
@@ -285,48 +437,78 @@ function ThrottleAnimation() {
   useEffect(() => {
     const interval = setInterval(() => {
       setThrottle(t => {
-        const next = t + 1.5;
+        const next = t + 1.2;
         return next > 100 ? 0 : next;
       });
     }, 50);
     return () => clearInterval(interval);
   }, []);
   const n1 = throttle * 0.85 + 15;
+  const fanAngle = throttle * 7.2;
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
-      <rect width="400" height="240" fill="#0a0a0a" />
-      {/* Engine cross-section */}
-      <g transform="translate(200, 100)">
-        <circle cx="0" cy="0" r="60" fill="none" stroke="#333" strokeWidth="2" />
-        <circle cx="0" cy="0" r="50" fill="none" stroke="#1a3a1a" strokeWidth="1" />
-        {/* Fan blades */}
-        {[...Array(8)].map((_, i) => {
-          const angle = (i * 45 + throttle * 3) * Math.PI / 180;
+      <defs>
+        <radialGradient id="engineGlow" cx="50%" cy="50%">
+          <stop offset="0%" stopColor="#ff8800" stopOpacity={throttle / 120} />
+          <stop offset="100%" stopColor="#ff4400" stopOpacity="0" />
+        </radialGradient>
+        <filter id="thrustGlow">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <rect width="400" height="240" fill="#080808" />
+      {/* Engine nacelle cross-section */}
+      <g transform="translate(200, 95)">
+        {/* Outer cowling */}
+        <circle cx="0" cy="0" r="70" fill="none" stroke="#2a2a2a" strokeWidth="3" />
+        <circle cx="0" cy="0" r="65" fill="none" stroke="#1a1a1a" strokeWidth="1" />
+        {/* Fan blades - rotating */}
+        {[...Array(12)].map((_, i) => {
+          const angle = (i * 30 + fanAngle) * Math.PI / 180;
           return (
-            <line key={i} x1="0" y1="0" x2={Math.cos(angle) * 45} y2={Math.sin(angle) * 45}
-              stroke="#6a8a6a" strokeWidth="3" strokeLinecap="round" />
+            <line key={i} x1="0" y1="0" x2={Math.cos(angle) * 55} y2={Math.sin(angle) * 55}
+              stroke="#5a7a5a" strokeWidth="4" strokeLinecap="round" opacity="0.7" />
           );
         })}
-        <circle cx="0" cy="0" r="8" fill="#333" />
-        {/* Exhaust glow */}
-        <ellipse cx="75" cy="0" rx={10 + throttle * 0.3} ry={8 + throttle * 0.15}
-          fill="#ff6600" opacity={throttle / 200}>
-          <animate attributeName="opacity" values={`${throttle / 250};${throttle / 150};${throttle / 250}`} dur="0.3s" repeatCount="indefinite" />
-        </ellipse>
+        {/* Spinner */}
+        <circle cx="0" cy="0" r="10" fill="#3a3a3a" stroke="#555" strokeWidth="1" />
+        <circle cx="0" cy="0" r="3" fill="#555" />
+        {/* Inner glow based on throttle */}
+        <circle cx="0" cy="0" r="60" fill="url(#engineGlow)" />
+        {/* Exhaust plume */}
+        {throttle > 20 && (
+          <g transform="translate(80, 0)" filter="url(#thrustGlow)">
+            <ellipse cx="0" cy="0" rx={8 + throttle * 0.4} ry={6 + throttle * 0.2}
+              fill="#ff6600" opacity={throttle / 200}>
+              <animate attributeName="rx" values={`${8 + throttle * 0.4};${12 + throttle * 0.5};${8 + throttle * 0.4}`} dur="0.2s" repeatCount="indefinite" />
+            </ellipse>
+            <ellipse cx={10 + throttle * 0.2} cy="0" rx={15 + throttle * 0.3} ry={4 + throttle * 0.1}
+              fill="#ff4400" opacity={throttle / 300}>
+              <animate attributeName="rx" values={`${15 + throttle * 0.3};${20 + throttle * 0.4};${15 + throttle * 0.3}`} dur="0.3s" repeatCount="indefinite" />
+            </ellipse>
+          </g>
+        )}
       </g>
-      {/* Throttle bar */}
-      <rect x="30" y="180" width="340" height="20" rx="4" fill="#1a1a1a" stroke="#333" />
-      <rect x="30" y="180" width={340 * throttle / 100} height="20" rx="4" fill="#00ff88" opacity="0.8" />
-      <text x="200" y="195" textAnchor="middle" fill="white" fontSize="11" fontFamily="monospace" fontWeight="bold">
-        THROTTLE {Math.round(throttle)}%
+      {/* N1 gauge */}
+      <rect x="20" y="175" width="160" height="50" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
+      <text x="100" y="190" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">N1 FAN SPEED</text>
+      <text x="100" y="215" textAnchor="middle" fill="#00ff88" fontSize="22" fontFamily="monospace" fontWeight="bold" filter="url(#thrustGlow)">
+        {n1.toFixed(1)}%
       </text>
-      {/* N1 display */}
-      <text x="200" y="225" textAnchor="middle" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold">
-        N1: {n1.toFixed(1)}%
+      {/* Throttle bar */}
+      <rect x="200" y="180" width="180" height="16" rx="4" fill="#1a1a1a" stroke="#333" />
+      <rect x="200" y="180" width={180 * throttle / 100} height="16" rx="4" fill={throttle > 90 ? '#ffaa00' : '#00ff88'} opacity="0.8" />
+      <text x="290" y="193" textAnchor="middle" fill="white" fontSize="10" fontFamily="monospace" fontWeight="bold">
+        {Math.round(throttle)}%
       </text>
       {/* Labels */}
-      <text x="30" y="175" fill="#6a8a6a" fontSize="9" fontFamily="monospace">IDLE</text>
-      <text x="370" y="175" textAnchor="end" fill="#6a8a6a" fontSize="9" fontFamily="monospace">TOGA</text>
+      <text x="200" y="210" fill="#6a8a6a" fontSize="8" fontFamily="monospace">IDLE</text>
+      <text x="380" y="210" textAnchor="end" fill="#ffaa00" fontSize="8" fontFamily="monospace">TOGA</text>
+      {/* Thrust value */}
+      <text x="290" y="225" textAnchor="middle" fill="#6a8a6a" fontSize="9" fontFamily="monospace">
+        {Math.round(throttle / 100 * 115 * 2)}k lbf
+      </text>
     </svg>
   );
 }
@@ -334,59 +516,95 @@ function ThrottleAnimation() {
 function EngineAnimation() {
   const [eng1, setEng1] = useState(true);
   const [eng2, setEng2] = useState(true);
+  const [phase, setPhase] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
-      setEng1(e => !e);
-      setTimeout(() => setEng2(e => !e), 1500);
-    }, 3000);
+      setPhase(p => p + 1);
+      if (phase % 60 === 0) setEng1(e => !e);
+      if (phase % 60 === 30) setEng2(e => !e);
+    }, 50);
     return () => clearInterval(interval);
-  }, []);
+  }, [phase]);
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
-      <rect width="400" height="240" fill="#0a0a0a" />
-      {/* Aircraft top view */}
-      <g transform="translate(200, 120)">
+      <defs>
+        <filter id="engGlow">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <rect width="400" height="240" fill="#080808" />
+      {/* Aircraft top view - detailed */}
+      <g transform="translate(200, 110)">
         {/* Fuselage */}
-        <ellipse cx="0" cy="0" rx="15" ry="70" fill="#2a2a2a" stroke="#444" />
+        <ellipse cx="0" cy="0" rx="16" ry="75" fill="#2a2a2a" stroke="#444" strokeWidth="1" />
+        <ellipse cx="0" cy="-5" rx="12" ry="65" fill="#1a1a1a" opacity="0.5" />
+        {/* Cockpit */}
+        <ellipse cx="0" cy="-70" rx="10" ry="8" fill="#333" />
+        <path d="M -6,-75 L 0,-80 L 6,-75" fill="#88ccff" opacity="0.5" />
         {/* Wings */}
-        <polygon points="-15,-10 -120,-20 -110,-15 -15,10" fill="#1a1a1a" stroke="#333" />
-        <polygon points="15,-10 120,-20 110,-15 15,10" fill="#1a1a1a" stroke="#333" />
+        <polygon points="-16,-10 -130,-25 -120,-18 -16,12" fill="#1a1a1a" stroke="#333" />
+        <polygon points="16,-10 130,-25 120,-18 16,12" fill="#1a1a1a" stroke="#333" />
+        {/* Wing tips */}
+        <polygon points="-130,-25 -138,-30 -132,-24" fill="#1a1a1a" stroke="#333" />
+        <polygon points="130,-25 138,-30 132,-24" fill="#1a1a1a" stroke="#333" />
         {/* Left engine */}
-        <g transform="translate(-60, -12)">
-          <ellipse cx="0" cy="0" rx="18" ry="10" fill={eng1 ? '#1a3a1a' : '#3a1a1a'} stroke={eng1 ? '#00ff88' : '#ff4444'} strokeWidth="2" />
+        <g transform="translate(-65, -14)">
+          <ellipse cx="0" cy="0" rx="20" ry="11" fill={eng1 ? '#1a3a1a' : '#3a1a1a'} stroke={eng1 ? '#00ff88' : '#ff4444'} strokeWidth="2" />
           {eng1 && (
             <>
-              <ellipse cx="22" cy="0" rx="8" ry="5" fill="#ff6600" opacity="0.6">
-                <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.4s" repeatCount="indefinite" />
+              <ellipse cx="22" cy="0" rx="10" ry="6" fill="#ff6600" opacity="0.6" filter="url(#engGlow)">
+                <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.3s" repeatCount="indefinite" />
+              </ellipse>
+              <ellipse cx="30" cy="0" rx="14" ry="4" fill="#ff4400" opacity="0.2">
+                <animate attributeName="rx" values="14;18;14" dur="0.4s" repeatCount="indefinite" />
               </ellipse>
               <text x="0" y="4" textAnchor="middle" fill="#00ff88" fontSize="8" fontFamily="monospace" fontWeight="bold">ON</text>
             </>
           )}
-          {!eng1 && <text x="0" y="4" textAnchor="middle" fill="#ff4444" fontSize="8" fontFamily="monospace" fontWeight="bold">OFF</text>}
-          <text x="0" y="-16" textAnchor="middle" fill="#6a8a6a" fontSize="9" fontFamily="monospace">ENG 1</text>
+          {!eng1 && (
+            <>
+              <text x="0" y="4" textAnchor="middle" fill="#ff4444" fontSize="7" fontFamily="monospace" fontWeight="bold">FAIL</text>
+              <circle cx="22" cy="0" r="6" fill="#666" opacity="0.3">
+                <animate attributeName="r" values="6;10;6" dur="1.5s" repeatCount="indefinite" />
+              </circle>
+            </>
+          )}
+          <text x="0" y="-18" textAnchor="middle" fill="#6a8a6a" fontSize="9" fontFamily="monospace">ENG 1</text>
         </g>
         {/* Right engine */}
-        <g transform="translate(60, -12)">
-          <ellipse cx="0" cy="0" rx="18" ry="10" fill={eng2 ? '#1a3a1a' : '#3a1a1a'} stroke={eng2 ? '#00ff88' : '#ff4444'} strokeWidth="2" />
+        <g transform="translate(65, -14)">
+          <ellipse cx="0" cy="0" rx="20" ry="11" fill={eng2 ? '#1a3a1a' : '#3a1a1a'} stroke={eng2 ? '#00ff88' : '#ff4444'} strokeWidth="2" />
           {eng2 && (
             <>
-              <ellipse cx="22" cy="0" rx="8" ry="5" fill="#ff6600" opacity="0.6">
-                <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.4s" repeatCount="indefinite" />
+              <ellipse cx="22" cy="0" rx="10" ry="6" fill="#ff6600" opacity="0.6" filter="url(#engGlow)">
+                <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.3s" repeatCount="indefinite" />
+              </ellipse>
+              <ellipse cx="30" cy="0" rx="14" ry="4" fill="#ff4400" opacity="0.2">
+                <animate attributeName="rx" values="14;18;14" dur="0.4s" repeatCount="indefinite" />
               </ellipse>
               <text x="0" y="4" textAnchor="middle" fill="#00ff88" fontSize="8" fontFamily="monospace" fontWeight="bold">ON</text>
             </>
           )}
-          {!eng2 && <text x="0" y="4" textAnchor="middle" fill="#ff4444" fontSize="8" fontFamily="monospace" fontWeight="bold">OFF</text>}
-          <text x="0" y="-16" textAnchor="middle" fill="#6a8a6a" fontSize="9" fontFamily="monospace">ENG 2</text>
+          {!eng2 && (
+            <>
+              <text x="0" y="4" textAnchor="middle" fill="#ff4444" fontSize="7" fontFamily="monospace" fontWeight="bold">FAIL</text>
+              <circle cx="22" cy="0" r="6" fill="#666" opacity="0.3">
+                <animate attributeName="r" values="6;10;6" dur="1.5s" repeatCount="indefinite" />
+              </circle>
+            </>
+          )}
+          <text x="0" y="-18" textAnchor="middle" fill="#6a8a6a" fontSize="9" fontFamily="monospace">ENG 2</text>
         </g>
         {/* Tail */}
-        <polygon points="-5,60 5,60 0,80" fill="#1a1a1a" stroke="#333" />
+        <polygon points="-6,65 6,65 0,82" fill="#1a1a1a" stroke="#333" />
+        <polygon points="-4,70 4,70 0,80" fill="#0066cc" opacity="0.5" />
       </g>
       {/* Key hints */}
-      <rect x="60" y="210" width="40" height="20" rx="4" fill="#1a1a1a" stroke="#00ff88" />
-      <text x="80" y="224" textAnchor="middle" fill="#00ff88" fontSize="12" fontFamily="monospace" fontWeight="bold">1</text>
-      <rect x="300" y="210" width="40" height="20" rx="4" fill="#1a1a1a" stroke="#00ff88" />
-      <text x="320" y="224" textAnchor="middle" fill="#00ff88" fontSize="12" fontFamily="monospace" fontWeight="bold">2</text>
+      <rect x="50" y="205" width="50" height="24" rx="4" fill="#1a1a1a" stroke={eng1 ? '#00ff88' : '#ff4444'} />
+      <text x="75" y="221" textAnchor="middle" fill={eng1 ? '#00ff88' : '#ff4444'} fontSize="14" fontFamily="monospace" fontWeight="bold">1</text>
+      <rect x="300" y="205" width="50" height="24" rx="4" fill="#1a1a1a" stroke={eng2 ? '#00ff88' : '#ff4444'} />
+      <text x="325" y="221" textAnchor="middle" fill={eng2 ? '#00ff88' : '#ff4444'} fontSize="14" fontFamily="monospace" fontWeight="bold">2</text>
     </svg>
   );
 }
@@ -394,109 +612,179 @@ function EngineAnimation() {
 function TakeoffAnimation() {
   const [phase, setPhase] = useState(0);
   useEffect(() => {
-    const interval = setInterval(() => setPhase(p => (p + 1) % 200), 50);
+    const interval = setInterval(() => setPhase(p => (p + 1) % 240), 50);
     return () => clearInterval(interval);
   }, []);
-  const speed = Math.min(180, phase * 1.8);
-  const rotate = speed > 140 ? Math.min(15, (speed - 140) * 0.375) : 0;
-  const altitude = speed > 150 ? (speed - 150) * 2 : 0;
-  const groundY = 160 + altitude * 0.3;
+  const speed = Math.min(200, phase * 1.5);
+  const v1Reached = speed >= 150;
+  const vrReached = speed >= 170;
+  const rotate = vrReached ? Math.min(12, (speed - 170) * 0.4) : 0;
+  const altitude = vrReached ? Math.max(0, (speed - 170) * 3) : 0;
+  const airborne = altitude > 0;
+  const groundY = 165 - altitude * 0.2;
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
       <defs>
         <linearGradient id="toSky" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#2a5a8a" />
-          <stop offset="100%" stopColor="#6a9bc8" />
+          <stop offset="0%" stopColor="#1a4a7a" />
+          <stop offset="100%" stopColor="#5a9bc8" />
         </linearGradient>
+        <filter id="toGlow">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
       </defs>
       <rect width="400" height="240" fill="url(#toSky)" />
+      {/* Sun */}
+      <circle cx="350" cy="40" r="20" fill="#ffdd44" opacity="0.3" />
+      <circle cx="350" cy="40" r="12" fill="#ffee88" opacity="0.5" />
       {/* Runway */}
       <rect x="0" y={groundY} width="400" height={240 - groundY} fill="#3a3a3a" />
       <line x1="0" y1={groundY} x2="400" y2={groundY} stroke="#666" strokeWidth="1" />
       {/* Runway markings */}
-      {[...Array(8)].map((_, i) => (
-        <rect key={i} x={((i * 60 - phase * 3) % 480) - 40} y={groundY + 10} width="30" height="3" fill="white" opacity="0.5" />
+      {[...Array(10)].map((_, i) => (
+        <rect key={i} x={((i * 50 - phase * 3) % 500) - 50} y={groundY + 8} width="25" height="2.5" fill="white" opacity="0.5" />
+      ))}
+      {/* Runway edge lights */}
+      {[...Array(12)].map((_, i) => (
+        <circle key={i} cx={((i * 40 - phase * 2) % 480) - 40} cy={groundY + 1} r="1.5" fill="#ffff00" opacity="0.6">
+          <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1s" repeatCount="indefinite" />
+        </circle>
       ))}
       {/* Aircraft */}
-      <g transform={`translate(150, ${groundY - 15}) rotate(${-rotate}, 0, 15)`}>
-        <ellipse cx="0" cy="0" rx="35" ry="6" fill="#c0c8d0" />
-        <polygon points="-10,-4 -40,-18 -35,-16 -5,-2" fill="#a0a8b0" />
-        <polygon points="10,-4 40,-18 35,-16 5,-2" fill="#a0a8b0" />
-        <polygon points="-30,-2 -38,-14 -34,-12 -28,-2" fill="#a0a8b0" />
-        {/* Engine glow */}
-        <ellipse cx="-25" cy="3" rx="5" ry="3" fill="#ff6600" opacity={speed > 10 ? 0.7 : 0}>
-          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="0.3s" repeatCount="indefinite" />
-        </ellipse>
-        <ellipse cx="25" cy="3" rx="5" ry="3" fill="#ff6600" opacity={speed > 10 ? 0.7 : 0}>
-          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="0.3s" repeatCount="indefinite" />
-        </ellipse>
+      <g transform={`translate(160, ${groundY - 18}) rotate(${-rotate}, 0, 18)`}>
+        {/* Fuselage */}
+        <ellipse cx="0" cy="0" rx="40" ry="7" fill="#d0d8e0" />
+        {/* Wings */}
+        <polygon points="-12,-5 -50,-22 -45,-19 -8,-3" fill="#b0b8c0" />
+        <polygon points="12,-5 50,-22 45,-19 8,-3" fill="#b0b8c0" />
+        {/* Tail */}
+        <polygon points="-35,-3 -42,-16 -38,-13 -32,-3" fill="#b0b8c0" />
+        {/* Engines with thrust */}
+        <g transform="translate(-28, 4)">
+          <ellipse cx="0" cy="0" rx="8" ry="4" fill="#808890" />
+          {speed > 5 && (
+            <>
+              <ellipse cx="-10" cy="0" rx={3 + speed * 0.03} ry={2 + speed * 0.01} fill="#ff6600" opacity="0.6" filter="url(#toGlow)">
+                <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.2s" repeatCount="indefinite" />
+              </ellipse>
+              <ellipse cx={-14 - speed * 0.05} cy="0" rx={6 + speed * 0.04} ry={2} fill="#ff4400" opacity="0.2">
+                <animate attributeName="rx" values={`${6 + speed * 0.04};${10 + speed * 0.05};${6 + speed * 0.04}`} dur="0.3s" repeatCount="indefinite" />
+              </ellipse>
+            </>
+          )}
+        </g>
+        <g transform="translate(28, 4)">
+          <ellipse cx="0" cy="0" rx="8" ry="4" fill="#808890" />
+          {speed > 5 && (
+            <>
+              <ellipse cx="-10" cy="0" rx={3 + speed * 0.03} ry={2 + speed * 0.01} fill="#ff6600" opacity="0.6" filter="url(#toGlow)">
+                <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.2s" repeatCount="indefinite" />
+              </ellipse>
+            </>
+          )}
+        </g>
         {/* Gear */}
-        {altitude < 20 && (
+        {!airborne && (
           <>
-            <line x1="-10" y1="6" x2="-10" y2="14" stroke="#666" strokeWidth="2" />
-            <line x1="10" y1="6" x2="10" y2="14" stroke="#666" strokeWidth="2" />
-            <circle cx="-10" cy="14" r="3" fill="#444" />
-            <circle cx="10" cy="14" r="3" fill="#444" />
+            <line x1="-8" y1="7" x2="-8" y2="15" stroke="#666" strokeWidth="2" />
+            <line x1="8" y1="7" x2="8" y2="15" stroke="#666" strokeWidth="2" />
+            <circle cx="-8" cy="16" r="2.5" fill="#444" />
+            <circle cx="8" cy="16" r="2.5" fill="#444" />
           </>
         )}
       </g>
-      {/* Speed display */}
-      <rect x="280" y="10" width="110" height="50" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
-      <text x="335" y="28" textAnchor="middle" fill="#6a8a6a" fontSize="9" fontFamily="monospace">AIRSPEED</text>
-      <text x="335" y="48" textAnchor="middle" fill="#00ff88" fontSize="18" fontFamily="monospace" fontWeight="bold">{Math.round(speed)}</text>
-      <text x="335" y="58" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">KTS</text>
-      {/* Phase labels */}
-      {speed < 80 && <text x="200" y="230" textAnchor="middle" fill="#ffaa00" fontSize="11" fontFamily="monospace">TAKEOFF ROLL — 加速滑跑</text>}
-      {speed >= 80 && speed < 140 && <text x="200" y="230" textAnchor="middle" fill="#ffaa00" fontSize="11" fontFamily="monospace">V1 APPROACHING — 接近决断速度</text>}
-      {speed >= 140 && speed < 160 && <text x="200" y="230" textAnchor="middle" fill="#00ff88" fontSize="11" fontFamily="monospace">VR — ROTATE 抬轮!</text>}
-      {speed >= 160 && <text x="200" y="230" textAnchor="middle" fill="#00ff88" fontSize="11" fontFamily="monospace">POSITIVE CLIMB — 正爬升率</text>}
+      {/* Speed tape */}
+      <rect x="290" y="10" width="100" height="65" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
+      <text x="340" y="25" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">AIRSPEED</text>
+      <text x="340" y="50" textAnchor="middle" fill="#00ff88" fontSize="22" fontFamily="monospace" fontWeight="bold" filter="url(#toGlow)">{Math.round(speed)}</text>
+      <text x="340" y="65" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">KTS</text>
+      {/* V-speed markers */}
+      <rect x="10" y="10" width="100" height="55" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
+      <text x="60" y="25" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">V-SPEEDS</text>
+      <text x="25" y="40" fill={v1Reached ? '#00ff88' : '#ffaa00'} fontSize="9" fontFamily="monospace">{v1Reached ? '✓' : '○'} V1 150</text>
+      <text x="25" y="52" fill={vrReached ? '#00ff88' : '#ffaa00'} fontSize="9" fontFamily="monospace">{vrReached ? '✓' : '○'} VR 170</text>
+      <text x="25" y="64" fill={airborne ? '#00ff88' : '#6a8a6a'} fontSize="9" fontFamily="monospace">{airborne ? '✓' : '○'} V2 185</text>
+      {/* Phase label */}
+      <rect x="100" y="215" width="200" height="20" rx="4" fill="#0a0a0a" stroke={airborne ? '#00ff88' : '#ffaa00'} opacity="0.9" />
+      <text x="200" y="229" textAnchor="middle" fill={airborne ? '#00ff88' : '#ffaa00'} fontSize="10" fontFamily="monospace" fontWeight="bold">
+        {!v1Reached ? 'TAKEOFF ROLL — 加速滑跑' : !vrReached ? 'V1 PASSED — 超过决断速度' : !airborne ? 'VR — ROTATE 抬轮!' : 'POSITIVE CLIMB — 正爬升率'}
+      </text>
     </svg>
   );
 }
 
 function GearAnimation() {
   const [gearDown, setGearDown] = useState(true);
+  const [transition, setTransition] = useState(0);
   useEffect(() => {
-    const interval = setInterval(() => setGearDown(g => !g), 2000);
+    const interval = setInterval(() => {
+      setGearDown(g => !g);
+      setTransition(0);
+    }, 2500);
     return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    const t = setInterval(() => setTransition(v => Math.min(1, v + 0.05)), 30);
+    return () => clearInterval(t);
+  }, []);
+  const gearY = gearDown ? 15 + transition * 25 : 40 - transition * 22;
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
-      <rect width="400" height="240" fill="#0a0a0a" />
+      <defs>
+        <linearGradient id="gearSky" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#1a3a5c" />
+          <stop offset="100%" stopColor="#4a7ba8" />
+        </linearGradient>
+      </defs>
+      <rect width="400" height="240" fill="url(#gearSky)" />
       {/* Aircraft side view */}
-      <g transform="translate(200, 100)">
-        {/* Fuselage */}
-        <ellipse cx="0" cy="0" rx="100" ry="15" fill="#2a2a2a" stroke="#444" />
-        {/* Wing */}
-        <polygon points="-20,-10 -80,-35 -70,-30 -10,-8" fill="#1a1a1a" stroke="#333" />
-        {/* Tail */}
-        <polygon points="-85,-5 -100,-35 -90,-30 -80,-5" fill="#1a1a1a" stroke="#333" />
-        {/* Engine */}
-        <ellipse cx="-40" cy="5" rx="15" ry="8" fill="#1a1a1a" stroke="#333" />
+      <g transform="translate(200, 90)">
+        <ellipse cx="0" cy="0" rx="110" ry="16" fill="#2a2a2a" stroke="#444" />
+        <ellipse cx="0" cy="-3" rx="100" ry="10" fill="#1a1a1a" opacity="0.4" />
+        <polygon points="-25,-12 -90,-40 -80,-35 -15,-10" fill="#1a1a1a" stroke="#333" />
+        <polygon points="-90,-5 -108,-38 -98,-33 -85,-5" fill="#1a1a1a" stroke="#333" />
+        <ellipse cx="-45" cy="6" rx="16" ry="9" fill="#1a1a1a" stroke="#333" />
+        {/* Cockpit */}
+        <path d="M 95,-8 L 110,-4 L 108,0 L 93,-4 Z" fill="#88ccff" opacity="0.5" />
         {/* Nose gear */}
         <g>
-          <line x1="60" y1="15" x2="60" y2={gearDown ? 40 : 18} stroke="#888" strokeWidth="3" />
-          {gearDown && <circle cx="60" cy="42" r="5" fill="#555" stroke="#888" />}
+          <line x1="70" y1="16" x2="70" y2={gearY} stroke="#888" strokeWidth="3" />
+          {gearDown && transition > 0.5 && <circle cx="70" cy={gearY + 2} r="5" fill="#555" stroke="#888" strokeWidth="1" />}
         </g>
         {/* Main gear */}
         <g>
-          <line x1="-10" y1="15" x2="-10" y2={gearDown ? 45 : 18} stroke="#888" strokeWidth="3" />
-          {gearDown && (
+          <line x1="-15" y1="16" x2="-15" y2={gearY + 5} stroke="#888" strokeWidth="3" />
+          {gearDown && transition > 0.5 && (
             <>
-              <circle cx="-15" cy="47" r="5" fill="#555" stroke="#888" />
-              <circle cx="-5" cy="47" r="5" fill="#555" stroke="#888" />
+              <circle cx="-20" cy={gearY + 7} r="5" fill="#555" stroke="#888" strokeWidth="1" />
+              <circle cx="-10" cy={gearY + 7} r="5" fill="#555" stroke="#888" strokeWidth="1" />
             </>
           )}
         </g>
+        {/* Gear doors */}
+        {!gearDown && (
+          <>
+            <rect x="62" y="14" width="16" height="4" rx="1" fill="#333" stroke="#444" />
+            <rect x="-23" y="14" width="16" height="4" rx="1" fill="#333" stroke="#444" />
+          </>
+        )}
       </g>
-      {/* Status */}
-      <rect x="140" y="170" width="120" height="30" rx="4" fill={gearDown ? '#1a3a1a' : '#3a1a1a'} stroke={gearDown ? '#00ff88' : '#ff4444'} />
-      <text x="200" y="190" textAnchor="middle" fill={gearDown ? '#00ff88' : '#ff4444'} fontSize="14" fontFamily="monospace" fontWeight="bold">
-        GEAR {gearDown ? 'DOWN' : 'UP'}
+      {/* Status panel */}
+      <rect x="130" y="165" width="140" height="40" rx="4" fill={gearDown ? '#1a3a1a' : '#3a1a1a'} stroke={gearDown ? '#00ff88' : '#ff4444'} />
+      <text x="200" y="182" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">LANDING GEAR</text>
+      <text x="200" y="198" textAnchor="middle" fill={gearDown ? '#00ff88' : '#ff4444'} fontSize="16" fontFamily="monospace" fontWeight="bold">
+        GEAR {gearDown ? 'DOWN ▼' : 'UP ▲'}
       </text>
-      {/* Key */}
-      <rect x="170" y="210" width="60" height="22" rx="4" fill="#1a1a1a" stroke="#00ff88" />
-      <text x="200" y="225" textAnchor="middle" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold">G</text>
+      {/* Drag indicator */}
+      <rect x="20" y="210" width="160" height="22" rx="4" fill="#0a0a0a" stroke="#333" />
+      <text x="100" y="225" textAnchor="middle" fill={gearDown ? '#ffaa00' : '#00ff88'} fontSize="9" fontFamily="monospace">
+        阻力: {gearDown ? '+15-20% (放下)' : '最小 (收起)'}
+      </text>
+      <rect x="220" y="210" width="160" height="22" rx="4" fill="#0a0a0a" stroke="#333" />
+      <text x="300" y="225" textAnchor="middle" fill="#6a8a6a" fontSize="9" fontFamily="monospace">
+        限速: 270 KTS / M0.82
+      </text>
     </svg>
   );
 }
@@ -509,47 +797,75 @@ function FlapsAnimation() {
     const interval = setInterval(() => {
       idx = (idx + 1) % flapSteps.length;
       setFlapAngle(flapSteps[idx]);
-    }, 1500);
+    }, 1800);
     return () => clearInterval(interval);
   }, []);
+  const liftBoost = flapAngle * 3;
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
-      <rect width="400" height="240" fill="#0a0a0a" />
-      {/* Wing cross-section */}
+      <defs>
+        <filter id="flapGlow">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <rect width="400" height="240" fill="#080808" />
+      {/* Wing cross-section - airfoil shape */}
       <g transform="translate(200, 100)">
-        {/* Main wing */}
-        <path d="M -120,0 Q -60,-30 0,-15 Q 60,-5 120,5 L 120,10 Q 60,5 0,0 Q -60,-10 -120,5 Z" fill="#2a2a2a" stroke="#444" />
-        {/* Flap */}
-        <g transform={`rotate(${flapAngle * 0.8}, 80, 5)`}>
-          <path d="M 80,5 L 130,10 L 130,15 L 80,12 Z" fill={flapAngle > 0 ? '#1a3a1a' : '#2a2a2a'} stroke={flapAngle > 0 ? '#00ff88' : '#444'} />
+        {/* Main wing airfoil */}
+        <path d="M -140,0 Q -100,-35 -40,-25 Q 0,-18 60,-10 Q 100,-5 140,5 L 140,12 Q 100,8 60,5 Q 0,2 -40,-5 Q -100,-15 -140,5 Z" fill="#2a2a2a" stroke="#444" strokeWidth="1" />
+        {/* Leading edge highlight */}
+        <path d="M -140,0 Q -100,-35 -40,-25 Q 0,-18 60,-10 Q 100,-5 140,5" fill="none" stroke="#555" strokeWidth="1" />
+        {/* Flap - trailing edge */}
+        <g transform={`rotate(${flapAngle * 0.8}, 100, 8)`}>
+          <path d="M 100,8 L 155,14 L 155,20 L 100,16 Z" fill={flapAngle > 0 ? '#1a3a1a' : '#2a2a2a'} stroke={flapAngle > 0 ? '#00ff88' : '#444'} strokeWidth="1" />
+          {/* Flap gap */}
+          {flapAngle > 0 && (
+            <line x1="100" y1="8" x2="100" y2="16" stroke="#ffaa00" strokeWidth="0.5" opacity="0.5" />
+          )}
         </g>
+        {/* Slats - leading edge */}
+        {flapAngle > 0 && (
+          <path d="M -140,0 L -145,-3 L -130,-8 L -125,-2 Z" fill="#1a3a1a" stroke="#00ff88" strokeWidth="0.5" opacity="0.7" />
+        )}
         {/* Airflow lines */}
-        {[...Array(5)].map((_, i) => (
-          <line key={i} x1={-140} y1={-20 + i * 10} x2={-100} y2={-15 + i * 8} stroke="#4a8aba" strokeWidth="1" opacity="0.5">
-            <animate attributeName="x1" values="-140;-100;-140" dur="2s" repeatCount="indefinite" />
-          </line>
+        {[...Array(6)].map((_, i) => (
+          <g key={i}>
+            <line x1={-160} y1={-25 + i * 10} x2={-120} y2={-20 + i * 8} stroke="#4a8aba" strokeWidth="1" opacity="0.4">
+              <animate attributeName="x1" values="-160;-120;-160" dur={`${1.5 + i * 0.2}s`} repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.2;0.6;0.2" dur={`${1.5 + i * 0.2}s`} repeatCount="indefinite" />
+            </line>
+          </g>
         ))}
         {/* Lift arrow */}
         {flapAngle > 0 && (
+          <g filter="url(#flapGlow)">
+            <line x1="0" y1="-30" x2="0" y2={-30 - liftBoost} stroke="#00ff88" strokeWidth="2.5" />
+            <polygon points={`0,${-30 - liftBoost - 10} -6,${-30 - liftBoost} 6,${-30 - liftBoost}`} fill="#00ff88" />
+            <text x="18" y={-35 - liftBoost} fill="#00ff88" fontSize="10" fontFamily="monospace" fontWeight="bold">LIFT +{Math.round(flapAngle * 2)}%</text>
+          </g>
+        )}
+        {/* Drag arrow */}
+        {flapAngle > 5 && (
           <g>
-            <line x1="0" y1="-20" x2="0" y2={-20 - flapAngle * 1.5} stroke="#00ff88" strokeWidth="2" />
-            <polygon points={`0,${-20 - flapAngle * 1.5 - 8} -5,${-20 - flapAngle * 1.5} 5,${-20 - flapAngle * 1.5}`} fill="#00ff88" />
-            <text x="15" y={-25 - flapAngle * 1.5} fill="#00ff88" fontSize="9" fontFamily="monospace">LIFT ↑</text>
+            <line x1="160" y1="10" x2={160 + flapAngle * 0.8} y2="10" stroke="#ffaa00" strokeWidth="2" />
+            <polygon points={`${160 + flapAngle * 0.8 + 8},10 ${160 + flapAngle * 0.8},6 ${160 + flapAngle * 0.8},14`} fill="#ffaa00" />
+            <text x={170 + flapAngle * 0.8} y="25" fill="#ffaa00" fontSize="8" fontFamily="monospace">DRAG</text>
           </g>
         )}
       </g>
       {/* Flap angle display */}
-      <rect x="140" y="170" width="120" height="30" rx="4" fill="#1a3a1a" stroke="#00ff88" />
-      <text x="200" y="190" textAnchor="middle" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold">
+      <rect x="130" y="165" width="140" height="35" rx="4" fill="#1a3a1a" stroke="#00ff88" />
+      <text x="200" y="180" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">FLAP POSITION</text>
+      <text x="200" y="196" textAnchor="middle" fill="#00ff88" fontSize="16" fontFamily="monospace" fontWeight="bold" filter="url(#flapGlow)">
         FLAPS {flapAngle}°
       </text>
-      {/* Keys */}
-      <rect x="120" y="210" width="40" height="22" rx="4" fill="#1a1a1a" stroke="#00ff88" />
-      <text x="140" y="225" textAnchor="middle" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold">[</text>
-      <text x="180" y="225" textAnchor="middle" fill="#6a8a6a" fontSize="10" fontFamily="monospace">收起</text>
-      <rect x="240" y="210" width="40" height="22" rx="4" fill="#1a1a1a" stroke="#00ff88" />
-      <text x="260" y="225" textAnchor="middle" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold">]</text>
-      <text x="300" y="225" textAnchor="middle" fill="#6a8a6a" fontSize="10" fontFamily="monospace">放下</text>
+      {/* Flap schedule */}
+      <g transform="translate(20, 210)">
+        <text x="0" y="0" fill="#6a8a6a" fontSize="8" fontFamily="monospace">起飞: 5-15°</text>
+        <text x="100" y="0" fill="#6a8a6a" fontSize="8" fontFamily="monospace">进近: 20-25°</text>
+        <text x="220" y="0" fill="#6a8a6a" fontSize="8" fontFamily="monospace">着陆: 25-30°</text>
+      </g>
     </svg>
   );
 }
@@ -557,45 +873,96 @@ function FlapsAnimation() {
 function AutopilotAnimation() {
   const [apOn, setApOn] = useState(false);
   const [heading, setHeading] = useState(270);
+  const [targetHdg] = useState(300);
   useEffect(() => {
-    const interval = setInterval(() => {
-      setApOn(a => !a);
-    }, 3000);
+    const interval = setInterval(() => setApOn(a => !a), 4000);
     return () => clearInterval(interval);
   }, []);
   useEffect(() => {
     if (!apOn) return;
     const interval = setInterval(() => {
-      setHeading(h => (h + 0.5) % 360);
+      setHeading(h => {
+        const diff = targetHdg - h;
+        const norm = diff > 180 ? diff - 360 : diff < -180 ? diff + 360 : diff;
+        return (h + norm * 0.05 + 360) % 360;
+      });
     }, 50);
     return () => clearInterval(interval);
-  }, [apOn]);
+  }, [apOn, targetHdg]);
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
-      <rect width="400" height="240" fill="#0a0a0a" />
-      {/* Compass */}
-      <circle cx="200" cy="110" r="80" fill="none" stroke="#1a3a1a" strokeWidth="2" />
-      {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(deg => {
-        const angle = (deg - heading) * Math.PI / 180;
-        const x = 200 + Math.sin(angle) * 75;
-        const y = 110 - Math.cos(angle) * 75;
-        const label = deg === 0 ? 'N' : deg === 90 ? 'E' : deg === 180 ? 'S' : deg === 270 ? 'W' : String(deg);
+      <defs>
+        <filter id="apGlow">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <rect width="400" height="240" fill="#080808" />
+      {/* HSI compass rose */}
+      <circle cx="200" cy="110" r="85" fill="none" stroke="#1a3a1a" strokeWidth="2" />
+      <circle cx="200" cy="110" r="82" fill="none" stroke="#0a1a0a" strokeWidth="1" />
+      {/* Heading marks */}
+      {[...Array(36)].map((_, i) => {
+        const deg = i * 10;
+        const relDeg = ((deg - heading + 540) % 360) - 180;
+        const angle = (relDeg - 90) * Math.PI / 180;
+        const isMajor = deg % 30 === 0;
+        const r1 = isMajor ? 72 : 78;
+        const r2 = 82;
         return (
-          <g key={deg}>
-            <text x={x} y={y + 3} textAnchor="middle" fill="#00ff88" fontSize="10" fontFamily="monospace">{label}</text>
-          </g>
+          <line key={i}
+            x1={200 + Math.cos(angle) * r1} y1={110 + Math.sin(angle) * r1}
+            x2={200 + Math.cos(angle) * r2} y2={110 + Math.sin(angle) * r2}
+            stroke={isMajor ? '#00ff88' : '#3a5a3a'} strokeWidth={isMajor ? 2 : 1} />
         );
       })}
-      {/* Heading marker */}
-      <polygon points="200,30 195,40 205,40" fill="#ffcc00" />
-      {/* Aircraft icon */}
+      {/* Cardinal labels */}
+      {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(deg => {
+        const relDeg = ((deg - heading + 540) % 360) - 180;
+        if (Math.abs(relDeg) > 80) return null;
+        const angle = (relDeg - 90) * Math.PI / 180;
+        const label = deg === 0 ? 'N' : deg === 90 ? 'E' : deg === 180 ? 'S' : deg === 270 ? 'W' : String(deg / 10);
+        return (
+          <text key={deg} x={200 + Math.cos(angle) * 62} y={113 + Math.sin(angle) * 62}
+            textAnchor="middle" fill="#00ff88" fontSize="10" fontFamily="monospace" fontWeight="bold">
+            {label}
+          </text>
+        );
+      })}
+      {/* Target heading bug */}
+      {(() => {
+        const relTarget = ((targetHdg - heading + 540) % 360) - 180;
+        const angle = (relTarget - 90) * Math.PI / 180;
+        return (
+          <g>
+            <circle cx={200 + Math.cos(angle) * 85} cy={110 + Math.sin(angle) * 85} r="5" fill="#ffaa00" opacity="0.8" />
+            <text x={200 + Math.cos(angle) * 95} y={113 + Math.sin(angle) * 95} textAnchor="middle" fill="#ffaa00" fontSize="8" fontFamily="monospace">TGT</text>
+          </g>
+        );
+      })()}
+      {/* Heading pointer (top) */}
+      <polygon points="200,25 195,35 205,35" fill="#ffcc00" />
+      <line x1="200" y1="35" x2="200" y2="50" stroke="#ffcc00" strokeWidth="2" />
+      {/* Aircraft symbol */}
       <g transform="translate(200, 110)">
-        <polygon points="0,-15 8,10 0,5 -8,10" fill="white" />
+        <polygon points="0,-18 10,12 0,6 -10,12" fill="white" />
       </g>
+      {/* Current heading display */}
+      <rect x="155" y="200" width="90" height="30" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
+      <text x="200" y="215" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">HDG</text>
+      <text x="200" y="228" textAnchor="middle" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold" filter="url(#apGlow)">
+        {String(Math.round(heading)).padStart(3, '0')}°
+      </text>
       {/* AP status */}
-      <rect x="140" y="200" width="120" height="25" rx="4" fill={apOn ? '#00ff88' : '#1a1a1a'} stroke={apOn ? '#00ff88' : '#333'} />
-      <text x="200" y="217" textAnchor="middle" fill={apOn ? '#000' : '#888'} fontSize="12" fontFamily="monospace" fontWeight="bold">
+      <rect x="20" y="200" width="120" height="30" rx="4" fill={apOn ? '#00ff88' : '#1a1a1a'} stroke={apOn ? '#00ff88' : '#333'} />
+      <text x="80" y="219" textAnchor="middle" fill={apOn ? '#000' : '#888'} fontSize="12" fontFamily="monospace" fontWeight="bold">
         A/P {apOn ? 'ENGAGED' : 'OFF'}
+      </text>
+      {/* Target heading */}
+      <rect x="260" y="200" width="120" height="30" rx="4" fill="#0a0a0a" stroke="#ffaa00" />
+      <text x="320" y="215" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">TARGET</text>
+      <text x="320" y="228" textAnchor="middle" fill="#ffaa00" fontSize="14" fontFamily="monospace" fontWeight="bold">
+        {String(targetHdg).padStart(3, '0')}°
       </text>
     </svg>
   );
@@ -604,42 +971,61 @@ function AutopilotAnimation() {
 function AutothrottleAnimation() {
   const [atOn, setAtOn] = useState(true);
   const [targetSpeed] = useState(250);
-  const [currentSpeed, setCurrentSpeed] = useState(200);
+  const [currentSpeed, setCurrentSpeed] = useState(180);
   useEffect(() => {
     const interval = setInterval(() => {
       setAtOn(a => !a);
-    }, 4000);
+      if (!atOn) setCurrentSpeed(180);
+    }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [atOn]);
   useEffect(() => {
     if (!atOn) return;
     const interval = setInterval(() => {
-      setCurrentSpeed(s => s < targetSpeed ? s + 1 : s);
+      setCurrentSpeed(s => s < targetSpeed ? s + 0.8 : s);
     }, 50);
     return () => clearInterval(interval);
   }, [atOn, targetSpeed]);
+  const throttlePos = atOn ? Math.min(100, (currentSpeed / targetSpeed) * 100) : 30;
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
-      <rect width="400" height="240" fill="#0a0a0a" />
-      {/* Speed gauge */}
-      <rect x="50" y="40" width="300" height="30" rx="4" fill="#1a1a1a" stroke="#333" />
+      <defs>
+        <filter id="atGlow">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <rect width="400" height="240" fill="#080808" />
+      {/* Speed tape */}
+      <rect x="30" y="30" width="340" height="40" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
       {/* Target speed marker */}
-      <line x1={50 + (targetSpeed / 350) * 300} y1="35" x2={50 + (targetSpeed / 350) * 300} y2="75" stroke="#ffcc00" strokeWidth="2" strokeDasharray="3,2" />
-      <text x={50 + (targetSpeed / 350) * 300} y="30" textAnchor="middle" fill="#ffcc00" fontSize="9" fontFamily="monospace">TGT {targetSpeed}</text>
+      <line x1={30 + (targetSpeed / 350) * 340} y1="25" x2={30 + (targetSpeed / 350) * 340} y2="75" stroke="#ffcc00" strokeWidth="2" strokeDasharray="3,2" />
+      <text x={30 + (targetSpeed / 350) * 340} y="20" textAnchor="middle" fill="#ffcc00" fontSize="9" fontFamily="monospace">TGT {targetSpeed}</text>
       {/* Current speed bar */}
-      <rect x="50" y="40" width={(currentSpeed / 350) * 300} height="30" rx="4" fill={atOn ? '#00ff88' : '#6a8a6a'} opacity="0.6" />
-      <text x="200" y="60" textAnchor="middle" fill="white" fontSize="12" fontFamily="monospace" fontWeight="bold">{Math.round(currentSpeed)} KTS</text>
-      {/* Throttle animation */}
-      <g transform="translate(200, 140)">
-        <rect x="-60" y="-20" width="120" height="40" rx="4" fill="#1a1a1a" stroke="#333" />
-        <rect x="-55" y="-15" width={atOn ? (currentSpeed / 350) * 110 : 30} height="30" rx="2" fill={atOn ? '#00ff88' : '#6a8a6a'} opacity="0.5" />
-        <text x="0" y="5" textAnchor="middle" fill={atOn ? '#00ff88' : '#888'} fontSize="11" fontFamily="monospace" fontWeight="bold">
-          {atOn ? 'AUTO' : 'MANUAL'}
-        </text>
+      <rect x="30" y="30" width={(currentSpeed / 350) * 340} height="40" rx="4" fill={atOn ? '#00ff88' : '#4a6a4a'} opacity="0.5" />
+      <text x="200" y="56" textAnchor="middle" fill="white" fontSize="16" fontFamily="monospace" fontWeight="bold" filter="url(#atGlow)">
+        {Math.round(currentSpeed)} KTS
+      </text>
+      {/* Throttle levers */}
+      <g transform="translate(120, 120)">
+        <rect x="0" y="0" width="160" height="80" rx="4" fill="#1a1a1a" stroke="#333" />
+        <text x="80" y="15" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">THROTTLE LEVERS</text>
+        {/* Lever 1 */}
+        <rect x="30" y={70 - throttlePos * 0.5} width="20" height={throttlePos * 0.5} rx="2" fill={atOn ? '#00ff88' : '#4a6a4a'} opacity="0.7" />
+        <rect x="28" y={68 - throttlePos * 0.5} width="24" height="6" rx="2" fill={atOn ? '#00ff88' : '#888'} />
+        {/* Lever 2 */}
+        <rect x="70" y={70 - throttlePos * 0.5} width="20" height={throttlePos * 0.5} rx="2" fill={atOn ? '#00ff88' : '#4a6a4a'} opacity="0.7" />
+        <rect x="68" y={68 - throttlePos * 0.5} width="24" height="6" rx="2" fill={atOn ? '#00ff88' : '#888'} />
+        {/* Labels */}
+        <text x="40" y="78" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">ENG1</text>
+        <text x="80" y="78" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">ENG2</text>
+        {/* Scale */}
+        <text x="120" y="25" fill="#6a8a6a" fontSize="7" fontFamily="monospace">TOGA</text>
+        <text x="120" y="72" fill="#6a8a6a" fontSize="7" fontFamily="monospace">IDLE</text>
       </g>
       {/* AT status */}
-      <rect x="140" y="200" width="120" height="25" rx="4" fill={atOn ? '#00ff88' : '#1a1a1a'} stroke={atOn ? '#00ff88' : '#333'} />
-      <text x="200" y="217" textAnchor="middle" fill={atOn ? '#000' : '#888'} fontSize="12" fontFamily="monospace" fontWeight="bold">
+      <rect x="140" y="210" width="120" height="25" rx="4" fill={atOn ? '#00ff88' : '#1a1a1a'} stroke={atOn ? '#00ff88' : '#333'} />
+      <text x="200" y="227" textAnchor="middle" fill={atOn ? '#000' : '#888'} fontSize="12" fontFamily="monospace" fontWeight="bold">
         A/T {atOn ? 'ENGAGED' : 'OFF'}
       </text>
     </svg>
@@ -649,84 +1035,94 @@ function AutothrottleAnimation() {
 function ReverseAnimation() {
   const [phase, setPhase] = useState(0);
   useEffect(() => {
-    const interval = setInterval(() => setPhase(p => (p + 1) % 100), 50);
+    const interval = setInterval(() => setPhase(p => (p + 1) % 120), 50);
     return () => clearInterval(interval);
   }, []);
-  const reverseActive = phase > 30 && phase < 80;
-  const speed = reverseActive ? Math.max(0, 160 - (phase - 30) * 3) : phase < 30 ? 160 : 10;
+  const reverseActive = phase > 30 && phase < 90;
+  const actualSpeed = phase < 30 ? 160 : phase < 90 ? Math.max(0, 160 - (phase - 30) * 2.5) : 10;
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
       <defs>
         <linearGradient id="revSky" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#4a7ba8" />
-          <stop offset="100%" stopColor="#8abbe8" />
+          <stop offset="0%" stopColor="#3a6a9a" />
+          <stop offset="100%" stopColor="#7abbe8" />
         </linearGradient>
+        <filter id="revGlow">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
       </defs>
       <rect width="400" height="240" fill="url(#revSky)" />
       {/* Runway */}
       <rect x="0" y="150" width="400" height="90" fill="#3a3a3a" />
       <line x1="0" y1="150" x2="400" y2="150" stroke="#666" />
-      {/* Runway markings */}
-      {[...Array(8)].map((_, i) => (
-        <rect key={i} x={((i * 60 + phase * 2) % 480) - 40} y="180" width="30" height="3" fill="white" opacity="0.5" />
+      {[...Array(10)].map((_, i) => (
+        <rect key={i} x={((i * 50 + phase * 2) % 500) - 50} y="175" width="25" height="2.5" fill="white" opacity="0.4" />
       ))}
       {/* Aircraft on ground */}
-      <g transform="translate(200, 135)">
-        <ellipse cx="0" cy="0" rx="40" ry="7" fill="#c0c8d0" />
-        <polygon points="-12,-5 -45,-20 -40,-18 -8,-3" fill="#a0a8b0" />
-        <polygon points="12,-5 45,-20 40,-18 8,-3" fill="#a0a8b0" />
+      <g transform="translate(200, 132)">
+        <ellipse cx="0" cy="0" rx="45" ry="8" fill="#d0d8e0" />
+        <polygon points="-14,-6 -52,-24 -46,-21 -10,-4" fill="#b0b8c0" />
+        <polygon points="14,-6 52,-24 46,-21 10,-4" fill="#b0b8c0" />
         {/* Engines with reverse thrust */}
-        <g transform="translate(-25, 3)">
-          <ellipse cx="0" cy="0" rx="10" ry="5" fill="#808890" />
+        <g transform="translate(-30, 4)">
+          <ellipse cx="0" cy="0" rx="12" ry="6" fill="#808890" />
           {reverseActive && (
             <>
+              {/* Reverse cascade vanes */}
+              <rect x="-14" y="-5" width="4" height="10" rx="1" fill="#aaa" opacity="0.6" />
               {/* Reverse thrust arrows */}
-              <polygon points="-15,-8 -25,-3 -15,2" fill="#ff6600" opacity="0.7">
-                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.2s" repeatCount="indefinite" />
+              <polygon points="-18,-8 -30,-3 -18,2" fill="#ff6600" opacity="0.7" filter="url(#revGlow)">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.15s" repeatCount="indefinite" />
               </polygon>
-              <polygon points="-15,8 -25,3 -15,-2" fill="#ff6600" opacity="0.7">
-                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.2s" repeatCount="indefinite" />
+              <polygon points="-18,8 -30,3 -18,-2" fill="#ff6600" opacity="0.7" filter="url(#revGlow)">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.15s" repeatCount="indefinite" />
               </polygon>
+              {/* Exhaust particles */}
+              {[...Array(4)].map((_, i) => (
+                <circle key={i} cx={-25 - i * 8} cy={-5 + i * 3} r={2 + i} fill="#ff8844" opacity={0.3 - i * 0.06}>
+                  <animate attributeName="cx" values={`${-25 - i * 8};${-35 - i * 10};${-25 - i * 8}`} dur="0.3s" repeatCount="indefinite" />
+                </circle>
+              ))}
             </>
           )}
-          {!reverseActive && (
-            <ellipse cx="12" cy="0" rx="4" ry="3" fill="#ff6600" opacity="0.3" />
-          )}
+          {!reverseActive && <ellipse cx="14" cy="0" rx="5" ry="3" fill="#ff6600" opacity="0.3" />}
         </g>
-        <g transform="translate(25, 3)">
-          <ellipse cx="0" cy="0" rx="10" ry="5" fill="#808890" />
+        <g transform="translate(30, 4)">
+          <ellipse cx="0" cy="0" rx="12" ry="6" fill="#808890" />
           {reverseActive && (
             <>
-              <polygon points="-15,-8 -25,-3 -15,2" fill="#ff6600" opacity="0.7">
-                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.2s" repeatCount="indefinite" />
+              <rect x="-14" y="-5" width="4" height="10" rx="1" fill="#aaa" opacity="0.6" />
+              <polygon points="-18,-8 -30,-3 -18,2" fill="#ff6600" opacity="0.7" filter="url(#revGlow)">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.15s" repeatCount="indefinite" />
               </polygon>
-              <polygon points="-15,8 -25,3 -15,-2" fill="#ff6600" opacity="0.7">
-                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.2s" repeatCount="indefinite" />
+              <polygon points="-18,8 -30,3 -18,-2" fill="#ff6600" opacity="0.7" filter="url(#revGlow)">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.15s" repeatCount="indefinite" />
               </polygon>
             </>
           )}
-          {!reverseActive && (
-            <ellipse cx="12" cy="0" rx="4" ry="3" fill="#ff6600" opacity="0.3" />
-          )}
+          {!reverseActive && <ellipse cx="14" cy="0" rx="5" ry="3" fill="#ff6600" opacity="0.3" />}
         </g>
         {/* Gear */}
-        <line x1="-8" y1="7" x2="-8" y2="14" stroke="#666" strokeWidth="2" />
-        <line x1="8" y1="7" x2="8" y2="14" stroke="#666" strokeWidth="2" />
-        <circle cx="-8" cy="15" r="3" fill="#444" />
-        <circle cx="8" cy="15" r="3" fill="#444" />
+        <line x1="-10" y1="8" x2="-10" y2="16" stroke="#666" strokeWidth="2" />
+        <line x1="10" y1="8" x2="10" y2="16" stroke="#666" strokeWidth="2" />
+        <circle cx="-10" cy="17" r="3" fill="#444" />
+        <circle cx="10" cy="17" r="3" fill="#444" />
       </g>
       {/* Speed display */}
-      <rect x="280" y="10" width="110" height="40" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
-      <text x="335" y="28" textAnchor="middle" fill="#6a8a6a" fontSize="9" fontFamily="monospace">GROUND SPEED</text>
-      <text x="335" y="44" textAnchor="middle" fill={reverseActive ? '#ffaa00' : '#00ff88'} fontSize="16" fontFamily="monospace" fontWeight="bold">{Math.round(speed)} KTS</text>
-      {/* Status */}
-      <rect x="10" y="10" width="120" height="25" rx="4" fill={reverseActive ? '#3a1a1a' : '#1a3a1a'} stroke={reverseActive ? '#ffaa00' : '#00ff88'} />
-      <text x="70" y="27" textAnchor="middle" fill={reverseActive ? '#ffaa00' : '#00ff88'} fontSize="11" fontFamily="monospace" fontWeight="bold">
-        {reverseActive ? 'REVERSE THRUST' : phase < 30 ? 'TOUCHDOWN' : 'TAXI SPEED'}
+      <rect x="280" y="10" width="110" height="45" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
+      <text x="335" y="25" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">GROUND SPEED</text>
+      <text x="335" y="48" textAnchor="middle" fill={reverseActive ? '#ffaa00' : '#00ff88'} fontSize="20" fontFamily="monospace" fontWeight="bold" filter="url(#revGlow)">
+        {Math.round(actualSpeed)}
       </text>
-      {/* Explanation */}
+      {/* Status */}
+      <rect x="10" y="10" width="130" height="28" rx="4" fill={reverseActive ? '#3a1a1a' : '#1a3a1a'} stroke={reverseActive ? '#ffaa00' : '#00ff88'} />
+      <text x="75" y="29" textAnchor="middle" fill={reverseActive ? '#ffaa00' : '#00ff88'} fontSize="11" fontFamily="monospace" fontWeight="bold">
+        {reverseActive ? '⚠ REVERSE THRUST' : phase < 30 ? 'TOUCHDOWN' : 'TAXI SPEED'}
+      </text>
+      {/* Deceleration info */}
       <text x="200" y="225" textAnchor="middle" fill="#6a8a6a" fontSize="9" fontFamily="monospace">
-        反推将引擎排气向前偏转，产生反向推力减速
+        反推 + 机轮刹车 + 扰流板 → 着陆距离 1500-2000m
       </text>
     </svg>
   );
@@ -735,50 +1131,79 @@ function ReverseAnimation() {
 function GroundAnimation() {
   const [phase, setPhase] = useState(0);
   useEffect(() => {
-    const interval = setInterval(() => setPhase(p => (p + 1) % 200), 50);
+    const interval = setInterval(() => setPhase(p => (p + 1) % 240), 50);
     return () => clearInterval(interval);
   }, []);
-  const taxiX = (phase * 2) % 400;
-  const isGrass = phase > 100;
+  const taxiX = (phase * 1.5) % 400;
+  const isGrass = phase > 120;
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
-      {/* Sky */}
-      <rect width="400" height="140" fill="#5a9bd8" />
-      {/* Ground */}
-      <rect x="0" y="140" width="400" height="100" fill={isGrass ? '#3a6a2a' : '#3a3a3a'} />
+      <defs>
+        <linearGradient id="gndSky" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#4a8ac8" />
+          <stop offset="100%" stopColor="#8abbe8" />
+        </linearGradient>
+      </defs>
+      <rect width="400" height="140" fill="url(#gndSky)" />
+      {/* Ground surface */}
+      <rect x="0" y="140" width="400" height="100" fill={isGrass ? '#3a6a2a' : '#4a4a4a'} />
+      {/* Surface texture */}
+      {!isGrass && (
+        <>
+          {/* Taxiway markings */}
+          <line x1="0" y1="170" x2="400" y2="170" stroke="#ffcc00" strokeWidth="2" strokeDasharray="15,10" opacity="0.5" />
+          {[...Array(10)].map((_, i) => (
+            <rect key={i} x={((i * 50 - phase * 1.5) % 500) - 50} y="185" width="25" height="2" fill="white" opacity="0.3" />
+          ))}
+          {/* Edge lights */}
+          {[...Array(8)].map((_, i) => (
+            <circle key={i} cx={((i * 55 - phase * 1) % 440) - 20} cy="142" r="2" fill="#00ff00" opacity="0.5">
+              <animate attributeName="opacity" values="0.3;0.7;0.3" dur="2s" repeatCount="indefinite" />
+            </circle>
+          ))}
+        </>
+      )}
+      {isGrass && (
+        <>
+          {[...Array(30)].map((_, i) => (
+            <line key={i} x1={i * 14} y1={145 + (i % 4) * 12} x2={i * 14 + 4} y2={140 + (i % 4) * 12} stroke="#5a9a4a" strokeWidth="1.5" opacity="0.6" />
+          ))}
+        </>
+      )}
       {/* Surface label */}
-      <text x="200" y="135" textAnchor="middle" fill={isGrass ? '#88cc44' : '#888'} fontSize="10" fontFamily="monospace">
-        {isGrass ? '草地道面 GRASS' : '铺装跑道 PAVED'}
+      <rect x="140" y="125" width="120" height="18" rx="3" fill="#0a0a0a" opacity="0.7" />
+      <text x="200" y="138" textAnchor="middle" fill={isGrass ? '#88cc44' : '#aaa'} fontSize="9" fontFamily="monospace" fontWeight="bold">
+        {isGrass ? 'GRASS 草地道面' : 'PAVED 铺装道面'}
       </text>
-      {/* Runway/taxiway markings */}
-      {!isGrass && [...Array(8)].map((_, i) => (
-        <rect key={i} x={((i * 60 - phase * 2) % 480) - 40} y="170" width="30" height="3" fill="white" opacity="0.5" />
-      ))}
-      {/* Grass texture */}
-      {isGrass && [...Array(20)].map((_, i) => (
-        <line key={i} x1={i * 20} y1={150 + (i % 3) * 15} x2={i * 20 + 5} y2={145 + (i % 3) * 15} stroke="#4a8a3a" strokeWidth="1" />
-      ))}
       {/* Aircraft taxiing */}
-      <g transform={`translate(${taxiX}, 130)`}>
-        <ellipse cx="0" cy="0" rx="30" ry="5" fill="#c0c8d0" />
-        <polygon points="-8,-3 -30,-14 -26,-12 -5,-2" fill="#a0a8b0" />
-        <polygon points="8,-3 30,-14 26,-12 5,-2" fill="#a0a8b0" />
-        <polygon points="-25,-2 -30,-12 -27,-10 -23,-2" fill="#a0a8b0" />
+      <g transform={`translate(${taxiX}, 128)`}>
+        <ellipse cx="0" cy="0" rx="32" ry="6" fill="#d0d8e0" />
+        <polygon points="-10,-4 -35,-16 -30,-14 -6,-2" fill="#b0b8c0" />
+        <polygon points="10,-4 35,-16 30,-14 6,-2" fill="#b0b8c0" />
+        <polygon points="-28,-2 -33,-12 -30,-10 -25,-2" fill="#b0b8c0" />
+        {/* Engine idle glow */}
+        <ellipse cx="-20" cy="3" rx="3" ry="2" fill="#ff6600" opacity="0.3" />
+        <ellipse cx="20" cy="3" rx="3" ry="2" fill="#ff6600" opacity="0.3" />
         {/* Gear */}
-        <line x1="-5" y1="5" x2="-5" y2="10" stroke="#666" strokeWidth="2" />
-        <line x1="5" y1="5" x2="5" y2="10" stroke="#666" strokeWidth="2" />
-        <circle cx="-5" cy="11" r="2.5" fill="#444" />
-        <circle cx="5" cy="11" r="2.5" fill="#444" />
+        <line x1="-6" y1="6" x2="-6" y2="12" stroke="#666" strokeWidth="2" />
+        <line x1="6" y1="6" x2="6" y2="12" stroke="#666" strokeWidth="2" />
+        <circle cx="-6" cy="13" r="2.5" fill="#444" />
+        <circle cx="6" cy="13" r="2.5" fill="#444" />
       </g>
-      {/* Resistance indicator */}
-      <rect x="20" y="200" width="160" height="25" rx="4" fill="#0a0a0a" stroke="#333" />
-      <text x="100" y="216" textAnchor="middle" fill={isGrass ? '#ffaa00' : '#00ff88'} fontSize="10" fontFamily="monospace">
-        滚动阻力: {isGrass ? '高 (5-10x)' : '正常 (1x)'}
+      {/* Info panels */}
+      <rect x="15" y="200" width="170" height="30" rx="4" fill="#0a0a0a" stroke="#333" />
+      <text x="100" y="215" textAnchor="middle" fill={isGrass ? '#ffaa00' : '#00ff88'} fontSize="9" fontFamily="monospace" fontWeight="bold">
+        滚动阻力: {isGrass ? '高 (5-10×)' : '正常 (1×)'}
       </text>
-      {/* Speed limit */}
-      <rect x="220" y="200" width="160" height="25" rx="4" fill="#0a0a0a" stroke="#333" />
-      <text x="300" y="216" textAnchor="middle" fill="#00ff88" fontSize="10" fontFamily="monospace">
+      <text x="100" y="226" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">
+        {isGrass ? '可能无法起飞!' : '正常起飞性能'}
+      </text>
+      <rect x="215" y="200" width="170" height="30" rx="4" fill="#0a0a0a" stroke="#333" />
+      <text x="300" y="215" textAnchor="middle" fill="#00ff88" fontSize="9" fontFamily="monospace" fontWeight="bold">
         滑行限速: 20-30 KTS
+      </text>
+      <text x="300" y="226" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">
+        转弯半径: ~30m (777-9)
       </text>
     </svg>
   );
@@ -789,46 +1214,73 @@ function ReadyAnimation() {
     <svg viewBox="0 0 400 240" className="w-full h-full">
       <defs>
         <linearGradient id="readySky" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#0a1628" />
-          <stop offset="50%" stopColor="#1a3a5c" />
-          <stop offset="100%" stopColor="#3a6b8a" />
+          <stop offset="0%" stopColor="#020810" />
+          <stop offset="40%" stopColor="#0a1628" />
+          <stop offset="100%" stopColor="#2a5a8a" />
         </linearGradient>
+        <filter id="readyGlow">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
       </defs>
       <rect width="400" height="240" fill="url(#readySky)" />
       {/* Stars */}
-      {[...Array(15)].map((_, i) => (
-        <circle key={i} cx={20 + i * 26} cy={10 + (i * 31) % 80} r="1" fill="white" opacity={0.3 + (i % 3) * 0.2}>
-          <animate attributeName="opacity" values={`${0.2};${0.7};${0.2}`} dur={`${2 + i % 3}s`} repeatCount="indefinite" />
+      {[...Array(25)].map((_, i) => (
+        <circle key={i} cx={10 + (i * 16) % 390} cy={5 + (i * 9) % 80} r={0.5 + (i % 3) * 0.4} fill="white" opacity={0.3}>
+          <animate attributeName="opacity" values={`${0.15};${0.6};${0.15}`} dur={`${2 + (i % 4) * 0.5}s`} repeatCount="indefinite" />
         </circle>
       ))}
-      {/* Flying aircraft */}
-      <g transform="translate(200, 100)">
-        <animateTransform attributeName="transform" type="translate" values="200,100;200,95;200,100" dur="3s" repeatCount="indefinite" />
-        <ellipse cx="0" cy="0" rx="50" ry="8" fill="#c0c8d0" />
-        <polygon points="-15,-5 -55,-25 -50,-22 -10,-3" fill="#a0a8b0" />
-        <polygon points="15,-5 55,-25 50,-22 10,-3" fill="#a0a8b0" />
-        <polygon points="-40,-3 -50,-18 -45,-15 -38,-3" fill="#a0a8b0" />
-        {/* Engine glow */}
-        <ellipse cx="-30" cy="4" rx="6" ry="4" fill="#ff6600" opacity="0.7">
-          <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.4s" repeatCount="indefinite" />
-        </ellipse>
-        <ellipse cx="30" cy="4" rx="6" ry="4" fill="#ff6600" opacity="0.7">
-          <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.4s" repeatCount="indefinite" />
-        </ellipse>
+      {/* Flying aircraft with contrails */}
+      <g transform="translate(200, 90)">
+        <animateTransform attributeName="transform" type="translate" values="200,90;200,85;200,90" dur="4s" repeatCount="indefinite" />
         {/* Contrails */}
-        <line x1="-35" y1="4" x2="-80" y2="8" stroke="white" strokeWidth="2" opacity="0.3" />
-        <line x1="35" y1="4" x2="80" y2="8" stroke="white" strokeWidth="2" opacity="0.3" />
+        <line x1="-35" y1="5" x2="-100" y2="12" stroke="white" strokeWidth="2" opacity="0.15">
+          <animate attributeName="opacity" values="0.08;0.2;0.08" dur="3s" repeatCount="indefinite" />
+        </line>
+        <line x1="35" y1="5" x2="100" y2="12" stroke="white" strokeWidth="2" opacity="0.15">
+          <animate attributeName="opacity" values="0.08;0.2;0.08" dur="3s" repeatCount="indefinite" />
+        </line>
+        {/* Fuselage */}
+        <ellipse cx="0" cy="0" rx="55" ry="9" fill="#d0d8e0" />
+        {/* Wings */}
+        <polygon points="-18,-6 -60,-28 -55,-25 -12,-4" fill="#b0b8c0" />
+        <polygon points="18,-6 60,-28 55,-25 12,-4" fill="#b0b8c0" />
+        {/* Tail */}
+        <polygon points="-45,-3 -55,-20 -50,-17 -42,-3" fill="#b0b8c0" />
+        {/* Windows */}
+        {[...Array(8)].map((_, i) => (
+          <rect key={i} x={-30 + i * 8} y="-3" width="4" height="2" rx="1" fill="#88ccff" opacity="0.5" />
+        ))}
+        {/* Engine glow */}
+        <ellipse cx="-32" cy="5" rx="7" ry="4" fill="#ff6600" opacity="0.6" filter="url(#readyGlow)">
+          <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.4s" repeatCount="indefinite" />
+        </ellipse>
+        <ellipse cx="32" cy="5" rx="7" ry="4" fill="#ff6600" opacity="0.6" filter="url(#readyGlow)">
+          <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.4s" repeatCount="indefinite" />
+        </ellipse>
       </g>
-      {/* Checklist */}
-      <g transform="translate(50, 150)">
+      {/* Pre-flight checklist */}
+      <g transform="translate(40, 140)">
+        <rect x="-10" y="-15" width="160" height="95" rx="4" fill="#0a0a0a" stroke="#1a3a1a" opacity="0.9" />
         <text x="0" y="0" fill="#00ff88" fontSize="10" fontFamily="monospace" fontWeight="bold">起飞检查单:</text>
-        <text x="0" y="18" fill="#6a8a6a" fontSize="9" fontFamily="monospace">✓ 襟翼设定</text>
-        <text x="0" y="32" fill="#6a8a6a" fontSize="9" fontFamily="monospace">✓ 油门 TOGA</text>
-        <text x="0" y="46" fill="#6a8a6a" fontSize="9" fontFamily="monospace">✓ 抬轮 VR</text>
-        <text x="0" y="60" fill="#6a8a6a" fontSize="9" fontFamily="monospace">✓ 收起落架</text>
+        <text x="0" y="18" fill="#00ff88" fontSize="9" fontFamily="monospace">✓ 襟翼 5-15°</text>
+        <text x="0" y="32" fill="#00ff88" fontSize="9" fontFamily="monospace">✓ 油门 TOGA</text>
+        <text x="0" y="46" fill="#00ff88" fontSize="9" fontFamily="monospace">✓ VR 170kts 抬轮</text>
+        <text x="0" y="60" fill="#00ff88" fontSize="9" fontFamily="monospace">✓ 正爬升收起落架</text>
+        <text x="0" y="74" fill="#6a8a6a" fontSize="9" fontFamily="monospace">○ 收襟翼 (400ft+)</text>
       </g>
-      <text x="200" y="230" textAnchor="middle" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold">
-        READY FOR TAKEOFF
+      {/* Flight profile */}
+      <g transform="translate(220, 140)">
+        <rect x="-10" y="-15" width="170" height="95" rx="4" fill="#0a0a0a" stroke="#1a3a1a" opacity="0.9" />
+        <text x="0" y="0" fill="#ffaa00" fontSize="10" fontFamily="monospace" fontWeight="bold">飞行剖面:</text>
+        <text x="0" y="18" fill="#6a8a6a" fontSize="8" fontFamily="monospace">起飞 → 爬升 → 巡航</text>
+        <text x="0" y="32" fill="#6a8a6a" fontSize="8" fontFamily="monospace">→ 下降 → 进近 → 着陆</text>
+        <text x="0" y="50" fill="#6a8a6a" fontSize="8" fontFamily="monospace">巡航: FL350-430</text>
+        <text x="0" y="64" fill="#6a8a6a" fontSize="8" fontFamily="monospace">速度: M0.84 (480kts)</text>
+        <text x="0" y="78" fill="#6a8a6a" fontSize="8" fontFamily="monospace">油耗: ~6,800 kg/hr</text>
+      </g>
+      <text x="200" y="235" textAnchor="middle" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold" filter="url(#readyGlow)">
+        READY FOR DEPARTURE
       </text>
     </svg>
   );
@@ -918,7 +1370,8 @@ function EmergencyStallAnimation() {
   const pitch = isStalled ? 15 - (phase - 20) * 0.05 : recovering ? Math.max(-5, 10 - (phase - 100) * 0.2) : 15;
   const speed = isStalled ? Math.max(80, 130 - (phase - 20) * 0.6) : recovering ? 80 + (phase - 100) * 1.2 : 130;
   const altitude = isStalled ? 8000 - (phase - 20) * 15 : recovering ? Math.max(5000, 6800 - (phase - 100) * 5) : 8000;
-  const buffet = isStalled ? (Math.random() - 0.5) * 3 : 0;
+  const buffet = isStalled ? (Math.random() - 0.5) * 5 : 0;
+  const warningFlash = isStalled && Math.floor(phase / 5) % 2 === 0;
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
       <defs>
@@ -930,58 +1383,115 @@ function EmergencyStallAnimation() {
           <stop offset="0%" stopColor="#6a5a20" />
           <stop offset="100%" stopColor="#3a2a08" />
         </linearGradient>
+        <filter id="stallGlow">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <filter id="warningGlow">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
       </defs>
       <g transform={`rotate(${buffet}, 200, 120)`}>
         <rect width="400" height="240" fill="url(#stallSky)" />
         <rect x="0" y={120 + pitch * 2} width="400" height={120 - pitch * 2} fill="url(#stallGround)" />
         <line x1="0" y1={120 + pitch * 2} x2="400" y2={120 + pitch * 2} stroke="white" strokeWidth="1.5" opacity="0.5" />
+        {/* Pitch ladder */}
+        {[-10, -5, 5, 10, 15].map(p => (
+          <g key={p}>
+            <line x1="160" y1={120 + pitch * 2 - p * 3} x2="175" y2={120 + pitch * 2 - p * 3} stroke="white" strokeWidth="1" opacity="0.4" />
+            <line x1="225" y1={120 + pitch * 2 - p * 3} x2="240" y2={120 + pitch * 2 - p * 3} stroke="white" strokeWidth="1" opacity="0.4" />
+            <text x="155" y={123 + pitch * 2 - p * 3} textAnchor="end" fill="white" fontSize="7" fontFamily="monospace" opacity="0.4">{Math.abs(p)}</text>
+          </g>
+        ))}
       </g>
-      {/* Aircraft symbol */}
+      {/* Aircraft symbol with buffet */}
       <g transform={`translate(200, 120) rotate(${-pitch + buffet})`}>
         <rect x="-35" y="-3" width="25" height="6" fill="#ffcc00" />
         <rect x="10" y="-3" width="25" height="6" fill="#ffcc00" />
         <circle cx="0" cy="0" r="5" fill="none" stroke="#ffcc00" strokeWidth="2" />
+        <rect x="-2" y="6" width="4" height="8" fill="#ffcc00" />
       </g>
-      {/* Stall warning */}
+      {/* Stall warning - enhanced */}
       {isStalled && (
-        <rect x="120" y="5" width="160" height="28" rx="4" fill="#ff0000" opacity="0.9">
-          <animate attributeName="opacity" values="0.9;0.4;0.9" dur="0.5s" repeatCount="indefinite" />
-        </rect>
-      )}
-      {isStalled && (
-        <text x="200" y="24" textAnchor="middle" fill="white" fontSize="14" fontFamily="monospace" fontWeight="bold">
-          ⚠ STALL WARNING
-        </text>
+        <>
+          <rect x="100" y="5" width="200" height="35" rx="4" fill={warningFlash ? '#ff0000' : '#880000'} opacity="0.95" filter="url(#warningGlow)">
+            <animate attributeName="opacity" values="0.95;0.5;0.95" dur="0.3s" repeatCount="indefinite" />
+          </rect>
+          <text x="200" y="22" textAnchor="middle" fill="white" fontSize="16" fontFamily="monospace" fontWeight="bold" filter="url(#stallGlow)">
+            ⚠ STALL WARNING
+          </text>
+          <text x="200" y="36" textAnchor="middle" fill="#ffcc00" fontSize="10" fontFamily="monospace" fontWeight="bold">
+            PUSH NOSE DOWN!
+          </text>
+          {/* Stick shaker indicator */}
+          <g transform="translate(50, 60)">
+            <rect x="-25" y="-12" width="50" height="24" rx="4" fill="#ff4444" opacity="0.8">
+              <animate attributeName="x" values="-25;-23;-25" dur="0.1s" repeatCount="indefinite" />
+            </rect>
+            <text x="0" y="4" textAnchor="middle" fill="white" fontSize="8" fontFamily="monospace" fontWeight="bold">SHAKER</text>
+          </g>
+          {/* AoA indicator */}
+          <g transform="translate(350, 60)">
+            <rect x="-30" y="-15" width="60" height="30" rx="4" fill="#0a0a0a" stroke="#ff4444" strokeWidth="2" />
+            <text x="0" y="-3" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">AOA</text>
+            <text x="0" y="10" textAnchor="middle" fill="#ff4444" fontSize="12" fontFamily="monospace" fontWeight="bold">
+              {(15 + pitch * 0.5).toFixed(0)}°
+            </text>
+          </g>
+        </>
       )}
       {recovering && (
         <>
-          <rect x="120" y="5" width="160" height="28" rx="4" fill="#1a3a1a" stroke="#00ff88" />
-          <text x="200" y="24" textAnchor="middle" fill="#00ff88" fontSize="12" fontFamily="monospace" fontWeight="bold">
-            RECOVERING 改出中
+          <rect x="100" y="5" width="200" height="35" rx="4" fill="#1a3a1a" stroke="#00ff88" strokeWidth="2" filter="url(#stallGlow)" />
+          <text x="200" y="22" textAnchor="middle" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold">
+            ✓ RECOVERING
+          </text>
+          <text x="200" y="36" textAnchor="middle" fill="#00ff88" fontSize="10" fontFamily="monospace">
+            速度恢复中...
           </text>
         </>
       )}
-      {/* Instruments */}
-      <rect x="10" y="180" width="120" height="50" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
-      <text x="70" y="196" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">AIRSPEED</text>
-      <text x="70" y="218" textAnchor="middle" fill={isStalled ? '#ff4444' : '#00ff88'} fontSize="18" fontFamily="monospace" fontWeight="bold">
+      {/* Instruments - enhanced */}
+      <rect x="10" y="175" width="120" height="55" rx="4" fill="#0a0a0a" stroke={isStalled ? '#ff4444' : '#1a3a1a'} strokeWidth="2" />
+      <text x="70" y="192" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">AIRSPEED</text>
+      <text x="70" y="218" textAnchor="middle" fill={isStalled ? '#ff4444' : '#00ff88'} fontSize="22" fontFamily="monospace" fontWeight="bold" filter="url(#stallGlow)">
         {Math.round(speed)}
       </text>
-      <rect x="140" y="180" width="120" height="50" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
-      <text x="200" y="196" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">PITCH</text>
-      <text x="200" y="218" textAnchor="middle" fill={pitch > 10 ? '#ffaa00' : '#00ff88'} fontSize="18" fontFamily="monospace" fontWeight="bold">
+      <text x="70" y="228" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">KTS</text>
+      {/* Stall speed marker */}
+      <line x1="10" y1={175 + (130 - speed) * 0.5} x2="130" y2={175 + (130 - speed) * 0.5} stroke="#ff4444" strokeWidth="1" strokeDasharray="3,2" opacity="0.7" />
+      
+      <rect x="140" y="175" width="120" height="55" rx="4" fill="#0a0a0a" stroke={pitch > 10 ? '#ffaa00' : '#1a3a1a'} strokeWidth="2" />
+      <text x="200" y="192" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">PITCH</text>
+      <text x="200" y="218" textAnchor="middle" fill={pitch > 10 ? '#ffaa00' : '#00ff88'} fontSize="22" fontFamily="monospace" fontWeight="bold" filter="url(#stallGlow)">
         {pitch.toFixed(1)}°
       </text>
-      <rect x="270" y="180" width="120" height="50" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
-      <text x="330" y="196" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">ALTITUDE</text>
-      <text x="330" y="218" textAnchor="middle" fill={isStalled ? '#ffaa00' : '#00ff88'} fontSize="16" fontFamily="monospace" fontWeight="bold">
-        {Math.round(altitude)}
+      <text x="200" y="228" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">DEGREES</text>
+      
+      <rect x="270" y="175" width="120" height="55" rx="4" fill="#0a0a0a" stroke={isStalled ? '#ffaa00' : '#1a3a1a'} strokeWidth="2" />
+      <text x="330" y="192" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">ALTITUDE</text>
+      <text x="330" y="218" textAnchor="middle" fill={isStalled ? '#ffaa00' : '#00ff88'} fontSize="18" fontFamily="monospace" fontWeight="bold" filter="url(#stallGlow)">
+        {Math.round(altitude).toLocaleString()}
       </text>
-      {/* Recovery instruction */}
+      <text x="330" y="228" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">FT</text>
+      
+      {/* Recovery instruction - enhanced */}
       {isStalled && (
-        <text x="200" y="170" textAnchor="middle" fill="#ffaa00" fontSize="10" fontFamily="monospace">
-          ↓ 推杆低头 + W 加油门！
-        </text>
+        <g>
+          <rect x="120" y="155" width="160" height="18" rx="3" fill="#ffaa00" opacity="0.9" />
+          <text x="200" y="168" textAnchor="middle" fill="#000" fontSize="11" fontFamily="monospace" fontWeight="bold">
+            ↓ 推杆 + W 加油门！
+          </text>
+        </g>
+      )}
+      {/* Altitude loss warning */}
+      {isStalled && altitude < 6000 && (
+        <g>
+          <text x="200" y="145" textAnchor="middle" fill="#ff4444" fontSize="10" fontFamily="monospace" fontWeight="bold">
+            ⚠ ALTITUDE LOSS: {Math.round(8000 - altitude)} ft
+          </text>
+        </g>
       )}
     </svg>
   );
@@ -995,18 +1505,47 @@ function EmergencyWindshearAnimation() {
   }, []);
   const stage = phase < 40 ? 'headwind' : phase < 80 ? 'downdraft' : phase < 120 ? 'tailwind' : 'recovery';
   const aircraftY = stage === 'downdraft' ? 130 + (phase - 40) * 0.5 : stage === 'tailwind' ? 150 - (phase - 80) * 0.3 : stage === 'recovery' ? 138 - (phase - 120) * 0.8 : 130;
+  const aircraftPitch = stage === 'headwind' ? 5 : stage === 'downdraft' ? -3 : stage === 'tailwind' ? 8 : 12;
+  const turbulence = stage !== 'recovery' ? (Math.random() - 0.5) * 2 : 0;
   return (
     <svg viewBox="0 0 400 240" className="w-full h-full">
       <defs>
         <linearGradient id="wsSky" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#3a4a5a" />
-          <stop offset="100%" stopColor="#5a6a7a" />
+          <stop offset="0%" stopColor="#2a3a4a" />
+          <stop offset="100%" stopColor="#4a5a6a" />
         </linearGradient>
+        <filter id="wsGlow">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <filter id="stormGlow">
+          <feGaussianBlur stdDeviation="5" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
       </defs>
       <rect width="400" height="240" fill="url(#wsSky)" />
-      {/* Storm clouds */}
-      {[0, 1, 2, 3].map(i => (
-        <ellipse key={i} cx={80 + i * 90} cy={30 + i * 10} rx={50 + i * 10} ry={20 + i * 5} fill="#2a2a3a" opacity="0.7" />
+      {/* Storm clouds - enhanced */}
+      {[0, 1, 2, 3, 4].map(i => (
+        <g key={i}>
+          <ellipse cx={60 + i * 80} cy={25 + i * 8} rx={55 + i * 12} ry={22 + i * 6} fill="#1a1a2a" opacity="0.8" />
+          <ellipse cx={70 + i * 80} cy={30 + i * 8} rx={45 + i * 10} ry={18 + i * 5} fill="#2a2a3a" opacity="0.6" />
+          {/* Lightning */}
+          {i === 2 && phase % 40 < 5 && (
+            <path d={`M ${70 + i * 80},${50 + i * 8} L ${75 + i * 80},${70 + i * 8} L ${68 + i * 80},${75 + i * 8} L ${73 + i * 80},${95 + i * 8}`} 
+              fill="none" stroke="#ffff88" strokeWidth="2" opacity="0.9" filter="url(#stormGlow)">
+              <animate attributeName="opacity" values="0.9;0.3;0.9" dur="0.1s" repeatCount="indefinite" />
+            </path>
+          )}
+        </g>
+      ))}
+      {/* Rain */}
+      {stage !== 'recovery' && [...Array(20)].map((_, i) => (
+        <line key={i} 
+          x1={20 + (i * 23 + phase * 2) % 400} 
+          y1={40 + (i * 17 + phase * 3) % 150} 
+          x2={18 + (i * 23 + phase * 2) % 400} 
+          y2={50 + (i * 17 + phase * 3) % 150} 
+          stroke="#88aacc" strokeWidth="1" opacity="0.4" />
       ))}
       {/* Ground/runway */}
       <rect x="0" y="190" width="400" height="50" fill="#3a3a3a" />
@@ -1014,71 +1553,128 @@ function EmergencyWindshearAnimation() {
       {[...Array(6)].map((_, i) => (
         <rect key={i} x={20 + i * 70} y="205" width="40" height="3" fill="white" opacity="0.3" />
       ))}
-      {/* Wind arrows */}
+      {/* Runway lights */}
+      {[...Array(8)].map((_, i) => (
+        <circle key={i} cx={25 + i * 50} cy="190" r="2" fill="#ffff00" opacity="0.6">
+          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1s" repeatCount="indefinite" />
+        </circle>
+      ))}
+      {/* Wind arrows - enhanced */}
       {stage === 'headwind' && (
         <>
-          {[0, 1, 2].map(i => (
-            <g key={i} transform={`translate(${50 + i * 120}, ${80 + i * 20})`}>
-              <line x1="0" y1="0" x2="40" y2="0" stroke="#00ff88" strokeWidth="2" />
-              <polygon points="40,0 32,-5 32,5" fill="#00ff88" />
-              <animate attributeName="opacity" values="0.3;1;0.3" dur="0.5s" repeatCount="indefinite" />
+          {[0, 1, 2, 3].map(i => (
+            <g key={i} transform={`translate(${30 + i * 100}, ${70 + i * 15})`}>
+              <line x1="0" y1="0" x2="50" y2="0" stroke="#00ff88" strokeWidth="3" filter="url(#wsGlow)" />
+              <polygon points="50,0 40,-6 40,6" fill="#00ff88" filter="url(#wsGlow)" />
+              <animate attributeName="opacity" values="0.4;1;0.4" dur="0.4s" repeatCount="indefinite" />
             </g>
           ))}
-          <text x="200" y="170" textAnchor="middle" fill="#00ff88" fontSize="11" fontFamily="monospace" fontWeight="bold">逆风增强 HEADWIND</text>
+          <text x="200" y="165" textAnchor="middle" fill="#00ff88" fontSize="13" fontFamily="monospace" fontWeight="bold" filter="url(#wsGlow)">
+            逆风增强 HEADWIND +30kts
+          </text>
+          {/* Speed increase indicator */}
+          <g transform="translate(350, 100)">
+            <rect x="-25" y="-15" width="50" height="30" rx="4" fill="#0a0a0a" stroke="#00ff88" strokeWidth="2" />
+            <text x="0" y="-3" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">IAS</text>
+            <text x="0" y="10" textAnchor="middle" fill="#00ff88" fontSize="12" fontFamily="monospace" fontWeight="bold">+30</text>
+          </g>
         </>
       )}
       {stage === 'downdraft' && (
         <>
-          {[0, 1, 2, 3].map(i => (
-            <g key={i} transform={`translate(${60 + i * 90}, ${50 + i * 10})`}>
-              <line x1="0" y1="0" x2="0" y2="40" stroke="#ff4444" strokeWidth="2" />
-              <polygon points="0,40 -5,32 5,32" fill="#ff4444" />
-              <animate attributeName="opacity" values="0.3;1;0.3" dur="0.4s" repeatCount="indefinite" />
+          {[0, 1, 2, 3, 4].map(i => (
+            <g key={i} transform={`translate(${40 + i * 80}, ${40 + i * 8})`}>
+              <line x1="0" y1="0" x2="0" y2="50" stroke="#ff4444" strokeWidth="3" filter="url(#wsGlow)" />
+              <polygon points="0,50 -7,40 7,40" fill="#ff4444" filter="url(#wsGlow)" />
+              <animate attributeName="opacity" values="0.4;1;0.4" dur="0.3s" repeatCount="indefinite" />
             </g>
           ))}
-          <text x="200" y="170" textAnchor="middle" fill="#ff4444" fontSize="11" fontFamily="monospace" fontWeight="bold">下沉气流 DOWNDRAFT!</text>
+          <text x="200" y="165" textAnchor="middle" fill="#ff4444" fontSize="13" fontFamily="monospace" fontWeight="bold" filter="url(#wsGlow)">
+            ⚠ 下沉气流 DOWNDRAFT -1500fpm!
+          </text>
+          {/* Altitude loss indicator */}
+          <g transform="translate(350, 100)">
+            <rect x="-25" y="-15" width="50" height="30" rx="4" fill="#0a0a0a" stroke="#ff4444" strokeWidth="2" />
+            <text x="0" y="-3" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">VS</text>
+            <text x="0" y="10" textAnchor="middle" fill="#ff4444" fontSize="11" fontFamily="monospace" fontWeight="bold">-1500</text>
+          </g>
         </>
       )}
       {stage === 'tailwind' && (
         <>
-          {[0, 1, 2].map(i => (
-            <g key={i} transform={`translate(${80 + i * 100}, ${90 + i * 15})`}>
-              <line x1="40" y1="0" x2="0" y2="0" stroke="#ffaa00" strokeWidth="2" />
-              <polygon points="0,0 8,-5 8,5" fill="#ffaa00" />
-              <animate attributeName="opacity" values="0.3;1;0.3" dur="0.6s" repeatCount="indefinite" />
+          {[0, 1, 2, 3].map(i => (
+            <g key={i} transform={`translate(${60 + i * 90}, ${80 + i * 12})`}>
+              <line x1="50" y1="0" x2="0" y2="0" stroke="#ffaa00" strokeWidth="3" filter="url(#wsGlow)" />
+              <polygon points="0,0 10,-6 10,6" fill="#ffaa00" filter="url(#wsGlow)" />
+              <animate attributeName="opacity" values="0.4;1;0.4" dur="0.5s" repeatCount="indefinite" />
             </g>
           ))}
-          <text x="200" y="170" textAnchor="middle" fill="#ffaa00" fontSize="11" fontFamily="monospace" fontWeight="bold">顺风增强 TAILWIND!</text>
+          <text x="200" y="165" textAnchor="middle" fill="#ffaa00" fontSize="13" fontFamily="monospace" fontWeight="bold" filter="url(#wsGlow)">
+            ⚠ 顺风增强 TAILWIND -25kts!
+          </text>
+          {/* Speed loss indicator */}
+          <g transform="translate(350, 100)">
+            <rect x="-25" y="-15" width="50" height="30" rx="4" fill="#0a0a0a" stroke="#ffaa00" strokeWidth="2" />
+            <text x="0" y="-3" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">IAS</text>
+            <text x="0" y="10" textAnchor="middle" fill="#ffaa00" fontSize="12" fontFamily="monospace" fontWeight="bold">-25</text>
+          </g>
         </>
       )}
       {stage === 'recovery' && (
-        <text x="200" y="170" textAnchor="middle" fill="#00ff88" fontSize="11" fontFamily="monospace" fontWeight="bold">改出成功 RECOVERY</text>
+        <>
+          <text x="200" y="165" textAnchor="middle" fill="#00ff88" fontSize="14" fontFamily="monospace" fontWeight="bold" filter="url(#wsGlow)">
+            ✓ 改出成功 RECOVERY
+          </text>
+          {/* Climb indicator */}
+          <g transform="translate(350, 100)">
+            <rect x="-25" y="-15" width="50" height="30" rx="4" fill="#0a0a0a" stroke="#00ff88" strokeWidth="2" />
+            <text x="0" y="-3" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">VS</text>
+            <text x="0" y="10" textAnchor="middle" fill="#00ff88" fontSize="11" fontFamily="monospace" fontWeight="bold">+2000</text>
+          </g>
+        </>
       )}
-      {/* Aircraft */}
-      <g transform={`translate(200, ${aircraftY})`}>
-        <ellipse cx="0" cy="0" rx="25" ry="5" fill="#c0c8d0" />
-        <polygon points="-8,-3 -30,-14 -26,-12 -5,-2" fill="#a0a8b0" />
-        <polygon points="8,-3 30,-14 26,-12 5,-2" fill="#a0a8b0" />
-        <polygon points="-22,-2 -28,-10 -25,-8 -20,-2" fill="#a0a8b0" />
-        {/* Engine glow - always TOGA */}
-        <ellipse cx="-18" cy="3" rx="5" ry="3" fill="#ff6600" opacity="0.8">
-          <animate attributeName="opacity" values="0.5;1;0.5" dur="0.2s" repeatCount="indefinite" />
+      {/* Aircraft with turbulence */}
+      <g transform={`translate(200, ${aircraftY + turbulence}) rotate(${aircraftPitch + turbulence})`}>
+        <ellipse cx="0" cy="0" rx="28" ry="6" fill="#c0c8d0" />
+        <polygon points="-10,-4 -35,-16 -30,-14 -6,-2" fill="#a0a8b0" />
+        <polygon points="10,-4 35,-16 30,-14 6,-2" fill="#a0a8b0" />
+        <polygon points="-25,-2 -32,-12 -28,-10 -22,-2" fill="#a0a8b0" />
+        {/* Engine glow - TOGA */}
+        <ellipse cx="-20" cy="4" rx="7" ry="4" fill="#ff6600" opacity="0.9" filter="url(#wsGlow)">
+          <animate attributeName="opacity" values="0.6;1;0.6" dur="0.15s" repeatCount="indefinite" />
         </ellipse>
-        <ellipse cx="18" cy="3" rx="5" ry="3" fill="#ff6600" opacity="0.8">
-          <animate attributeName="opacity" values="0.5;1;0.5" dur="0.2s" repeatCount="indefinite" />
+        <ellipse cx="20" cy="4" rx="7" ry="4" fill="#ff6600" opacity="0.9" filter="url(#wsGlow)">
+          <animate attributeName="opacity" values="0.6;1;0.6" dur="0.15s" repeatCount="indefinite" />
+        </ellipse>
+        {/* Exhaust plumes */}
+        <ellipse cx="-30" cy="4" rx="12" ry="3" fill="#ff4400" opacity="0.4" filter="url(#wsGlow)">
+          <animate attributeName="rx" values="12;18;12" dur="0.3s" repeatCount="indefinite" />
+        </ellipse>
+        <ellipse cx="30" cy="4" rx="12" ry="3" fill="#ff4400" opacity="0.4" filter="url(#wsGlow)">
+          <animate attributeName="rx" values="12;18;12" dur="0.3s" repeatCount="indefinite" />
         </ellipse>
       </g>
-      {/* Warning */}
+      {/* Warning - enhanced */}
       {stage !== 'recovery' && (
         <>
-          <rect x="100" y="5" width="200" height="25" rx="4" fill="#ff0000" opacity="0.8">
-            <animate attributeName="opacity" values="0.8;0.3;0.8" dur="0.5s" repeatCount="indefinite" />
+          <rect x="80" y="5" width="240" height="30" rx="4" fill="#ff0000" opacity="0.9" filter="url(#stormGlow)">
+            <animate attributeName="opacity" values="0.9;0.4;0.9" dur="0.4s" repeatCount="indefinite" />
           </rect>
-          <text x="200" y="22" textAnchor="middle" fill="white" fontSize="12" fontFamily="monospace" fontWeight="bold">
-            WIND SHEAR — TOGA!
+          <text x="200" y="20" textAnchor="middle" fill="white" fontSize="14" fontFamily="monospace" fontWeight="bold">
+            ⚠ WIND SHEAR — TOGA!
+          </text>
+          <text x="200" y="32" textAnchor="middle" fill="#ffcc00" fontSize="9" fontFamily="monospace">
+            MAX THRUST + 15° PITCH
           </text>
         </>
       )}
+      {/* PWS indicator */}
+      <g transform="translate(50, 210)">
+        <rect x="-35" y="-12" width="70" height="24" rx="4" fill={stage !== 'recovery' ? '#ff4444' : '#1a3a1a'} opacity="0.9" />
+        <text x="0" y="4" textAnchor="middle" fill="white" fontSize="8" fontFamily="monospace" fontWeight="bold">
+          {stage !== 'recovery' ? 'PWS ALERT' : 'PWS CLEAR'}
+        </text>
+      </g>
     </svg>
   );
 }

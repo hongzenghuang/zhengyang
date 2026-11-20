@@ -27,22 +27,22 @@ function getDensityRatio(altitude: number): number {
 function getLiftCoefficient(
   pitch: number, flapsAngle: number, airspeed: number, scenario: FlightScenario
 ): number {
-  // Redesigned for realistic takeoff performance
-  // At pitch=10, flaps=15: CL=1.85 (takeoff rotation)
-  // At pitch=2, flaps=0: CL=0.51 (cruise)
-  // Stall speed clean ≈179kts, with flaps15 ≈136kts
-  const baseCL = 0.35;
-  const pitchCL = pitch * 0.10;
-  const flapsCL = flapsAngle * 0.045;
+  // Redesigned for realistic flight performance
+  // Key: pitch directly affects lift coefficient strongly
+  // At pitch=10, flaps=15: CL≈2.0 (takeoff rotation)
+  // At pitch=2, flaps=0: CL≈0.6 (cruise)
+  const baseCL = 0.25;
+  const pitchCL = pitch * 0.15; // Stronger pitch effect
+  const flapsCL = flapsAngle * 0.05;
   
   // Icing reduces lift by up to 30%
   const icingPenalty = scenario === 'icing' ? 0.7 : 1.0;
   
   // Stall model: below stall speed, lift degrades
-  const stallSpeed = 130 - flapsAngle * 1.5;
+  const stallSpeed = 120 - flapsAngle * 1.5;
   const stallFactor = airspeed < stallSpeed ? Math.max(0.3, airspeed / stallSpeed) : 1;
   
-  return Math.max(-0.3, Math.min(2.8, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
+  return Math.max(-0.3, Math.min(3.0, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
 }
 
 function getDragCoefficient(
@@ -227,22 +227,25 @@ export function updateFlightPhysics(
   const newIAS = newTAS * Math.sqrt(Math.max(0.01, densityRatio));
   newState.airspeed = Math.max(0, newIAS);
 
-  // Vertical forces
+  // Vertical forces - improved altitude control
   if (isOnGround) {
     newState.verticalSpeed = 0;
     newState.altitude = 0;
   } else {
+    // Lift acts perpendicular to wings, so vertical component depends on roll
     const liftVertical = lift * Math.cos(rollRad);
-    const gravityVertical = weight * Math.cos(pitchRad);
+    // Weight always acts downward
+    const gravityVertical = weight;
     const netForceVertical = liftVertical - gravityVertical;
     const verticalAcceleration = netForceVertical / MASS;
 
-    const vsChange = verticalAcceleration * 60 * dt;
+    // More responsive vertical speed changes
+    const vsChange = verticalAcceleration * 80 * dt;
     newState.verticalSpeed = state.verticalSpeed + vsChange;
 
-    // Light damping only near zero
-    if (Math.abs(state.verticalSpeed) < 10 && Math.abs(verticalAcceleration) < 0.05) {
-      newState.verticalSpeed = newState.verticalSpeed * 0.98;
+    // Light damping only when very close to equilibrium
+    if (Math.abs(state.verticalSpeed) < 5 && Math.abs(verticalAcceleration) < 0.02) {
+      newState.verticalSpeed = newState.verticalSpeed * 0.95;
     }
 
     newState.verticalSpeed = Math.max(-6000, Math.min(6000, newState.verticalSpeed));
@@ -308,17 +311,19 @@ export const initialAircraftState: AircraftState = {
   scenarioMessage: '',
 };
 
-// Takeoff-ready state: flaps set, throttle advancing, on runway
+// Takeoff-ready state: flaps set, on runway, throttle at idle (user advances manually)
 export const takeoffReadyState: AircraftState = {
   ...initialAircraftState,
-  throttle: 95,
+  throttle: 0,
+  engine1N1: 15, // Idle N1
+  engine2N1: 15,
   flapsAngle: 15,
   gearDown: true,
   heading: 270,
   targetAltitude: 10000,
   targetAirspeed: 250,
   targetHeading: 270,
-  scenarioMessage: '起飞推力设定 — 准备抬轮 VR≈180kts',
+  scenarioMessage: '襟翼15°已设定 — 按 W 推满油门起飞！',
 };
 
 // Scenario-specific initial states

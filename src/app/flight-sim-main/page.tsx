@@ -221,7 +221,7 @@ export default function FlightSimulatorPage() {
     }
   }, [state.airspeed, state.altitude, state.verticalSpeed, state.roll, state.engine1Enabled, state.engine2Enabled, state.gearDown, state.flapsAngle, state.autopilotEnabled, state.targetAltitude]);
 
-  // Voice alerts using Web Speech API
+  // Voice alerts using Web Speech API - improved initialization
   useEffect(() => {
     const priorityAlert = getPriorityAlert(alerts);
     const now = Date.now();
@@ -231,19 +231,29 @@ export default function FlightSimulatorPage() {
         priorityAlert.audio !== lastAlertAudioRef.current &&
         now - lastAlertTimeRef.current > 3000) {
       
-      if ('speechSynthesis' in window) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         // Cancel any ongoing speech
         window.speechSynthesis.cancel();
         
-        const utterance = new SpeechSynthesisUtterance(priorityAlert.audio);
-        utterance.rate = 0.9;
-        utterance.pitch = 0.8;
-        utterance.volume = 1;
-        utterance.lang = 'en-US';
-        
-        window.speechSynthesis.speak(utterance);
-        lastAlertAudioRef.current = priorityAlert.audio;
-        lastAlertTimeRef.current = now;
+        // Small delay to ensure cancel completes
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance(priorityAlert.audio!);
+          utterance.rate = 0.9;
+          utterance.pitch = 0.8;
+          utterance.volume = 1;
+          utterance.lang = 'en-US';
+          
+          // Try to get a voice
+          const voices = window.speechSynthesis.getVoices();
+          const englishVoice = voices.find(v => v.lang.startsWith('en'));
+          if (englishVoice) {
+            utterance.voice = englishVoice;
+          }
+          
+          window.speechSynthesis.speak(utterance);
+          lastAlertAudioRef.current = priorityAlert.audio!;
+          lastAlertTimeRef.current = Date.now();
+        }, 50);
       }
     }
     
@@ -439,10 +449,10 @@ export default function FlightSimulatorPage() {
           </div>
         )}
 
-        {/* Horizon glow */}
+        {/* Horizon glow - fixed position calculation */}
         <div className="absolute left-0 right-0 h-8 pointer-events-none"
           style={{ 
-            bottom: `${50 + smoothPitch * 1.5 - 3}%`, 
+            top: `${50 - smoothPitch * 2}%`, 
             transform: `rotate(${smoothRoll}deg)`, 
             transformOrigin: 'center',
             background: 'linear-gradient(to top, rgba(255,200,100,0.15), transparent)',
@@ -450,7 +460,7 @@ export default function FlightSimulatorPage() {
           }} />
 
         <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
-          style={{ bottom: `${50 + smoothPitch * 1.5}%`, transform: `rotate(${smoothRoll}deg)`, transformOrigin: 'center', transition: 'transform 0.05s linear' }} />
+          style={{ top: `${50 - smoothPitch * 2}%`, transform: `rotate(${smoothRoll}deg)`, transformOrigin: 'center', transition: 'transform 0.05s linear' }} />
         
         <div className="absolute top-2 left-3 flex gap-4 text-[10px]">
           <div className="flex flex-col items-center">
@@ -648,11 +658,11 @@ export default function FlightSimulatorPage() {
               <text x="32" y="70" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">IAS</text>
               <text x="32" y="300" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">KTS</text>
 
-              {/* Attitude Indicator (Center) */}
+              {/* Attitude Indicator (Center) - Fixed transform order */}
               <circle cx="150" cy="180" r="98" fill="none" stroke="#333" strokeWidth="3" />
               <g clipPath="url(#attitudeClip)">
-                {/* Sky/Ground with rotation */}
-                <g transform={`rotate(${state.roll}, 150, 180) translate(0, ${state.pitch * 3})`}>
+                {/* Sky/Ground with rotation - translate first, then rotate */}
+                <g transform={`translate(0, ${-state.pitch * 3}) rotate(${state.roll}, 150, 180)`}>
                   <rect x="0" y="0" width="300" height="180" fill="url(#skyGrad)" />
                   <rect x="0" y="180" width="300" height="220" fill="url(#groundGrad)" />
                   <line x1="0" y1="180" x2="300" y2="180" stroke="white" strokeWidth="2" />
