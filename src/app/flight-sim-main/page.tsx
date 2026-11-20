@@ -418,7 +418,7 @@ export default function FlightSimulatorPage() {
             style={{ 
               height: `${Math.min(50, groundOpacity * 50)}%`,
               opacity: groundOpacity,
-              transform: `rotate(${state.roll}deg)`,
+              transform: `rotate(${-state.roll}deg)`,
               transformOrigin: 'center bottom',
             }}>
             <div className="absolute inset-0 bg-gradient-to-t from-[#2a4a1a] via-[#3a5a2a] to-[#4a6a3a]" />
@@ -442,17 +442,17 @@ export default function FlightSimulatorPage() {
           </div>
         )}
 
-        {/* Horizon glow - using state directly */}
+        {/* Horizon glow - pitch up moves horizon down */}
         <div className="absolute left-0 right-0 h-8 pointer-events-none"
           style={{ 
-            top: `${50 - state.pitch * 2}%`, 
-            transform: `rotate(${state.roll}deg)`, 
+            top: `${50 + state.pitch * 2}%`, 
+            transform: `rotate(${-state.roll}deg)`, 
             transformOrigin: 'center',
             background: 'linear-gradient(to top, rgba(255,200,100,0.15), transparent)',
           }} />
 
         <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
-          style={{ top: `${50 - state.pitch * 2}%`, transform: `rotate(${state.roll}deg)`, transformOrigin: 'center' }} />
+          style={{ top: `${50 + state.pitch * 2}%`, transform: `rotate(${-state.roll}deg)`, transformOrigin: 'center' }} />
         
         <div className="absolute top-2 left-3 flex gap-4 text-[10px]">
           <div className="flex flex-col items-center">
@@ -653,8 +653,8 @@ export default function FlightSimulatorPage() {
               {/* Attitude Indicator (Center) - Fixed transform order */}
               <circle cx="150" cy="180" r="98" fill="none" stroke="#333" strokeWidth="3" />
               <g clipPath="url(#attitudeClip)">
-                {/* Sky/Ground with rotation - translate first, then rotate */}
-                <g transform={`translate(0, ${-state.pitch * 3}) rotate(${state.roll}, 150, 180)`}>
+                {/* Sky/Ground with rotation - pitch up moves horizon down, roll right tilts left */}
+                <g transform={`translate(0, ${state.pitch * 3}) rotate(${-state.roll}, 150, 180)`}>
                   <rect x="0" y="0" width="300" height="180" fill="url(#skyGrad)" />
                   <rect x="0" y="180" width="300" height="220" fill="url(#groundGrad)" />
                   <line x1="0" y1="180" x2="300" y2="180" stroke="white" strokeWidth="2" />
@@ -685,8 +685,8 @@ export default function FlightSimulatorPage() {
                   <line x1="150" y1="85" x2="150" y2="92" stroke="white" strokeWidth="1.5" />
                 </g>
               ))}
-              {/* Bank pointer */}
-              <g transform={`rotate(${state.roll}, 150, 180)`}>
+              {/* Bank pointer - moves with aircraft roll */}
+              <g transform={`rotate(${-state.roll}, 150, 180)`}>
                 <polygon points="150,88 146,95 154,95" fill="white" />
               </g>
               {/* Fixed triangle at top */}
