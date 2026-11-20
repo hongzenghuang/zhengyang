@@ -420,6 +420,14 @@ export default function FlightSimulatorPage() {
           <button className={`ap-btn ${state.autopilotEnabled ? 'active' : ''}`} onClick={() => dispatch('TOGGLE_AUTOPILOT')}>A/P [P]</button>
           <button className={`ap-btn ${state.autothrottleEnabled ? 'active' : ''}`} onClick={() => dispatch('TOGGLE_AUTOTHROTTLE')}>A/T [T]</button>
         </div>
+
+        <button 
+          onClick={() => setShowScenarioPanel(true)}
+          className={`ap-btn ml-1 ${state.activeScenario !== 'normal' ? 'active' : ''}`}
+          style={state.activeScenario !== 'normal' ? { background: '#ffaa00', borderColor: '#ffaa00', color: '#000' } : {}}
+        >
+          {state.activeScenario === 'normal' ? '⚡ 特殊情况' : `⚡ ${SCENARIOS.find(s => s.id === state.activeScenario)?.name || '场景'}`}
+        </button>
       </div>
 
       {/* Main Instrument Panel */}
@@ -741,6 +749,15 @@ export default function FlightSimulatorPage() {
                 type="range" min="0" max="100" step="1"
                 value={Math.round(state.throttle)}
                 onChange={(e) => setThrottle(parseInt(e.target.value))}
+                onMouseUp={(e) => (e.target as HTMLElement).blur()}
+                onTouchEnd={(e) => (e.target as HTMLElement).blur()}
+                onKeyDown={(e) => {
+                  // Prevent arrow keys from adjusting the slider
+                  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                }}
                 className="w-full h-2 cursor-pointer"
               />
               <div className="flex justify-between text-[7px] text-gray-500 mt-0.5">
@@ -872,12 +889,6 @@ export default function FlightSimulatorPage() {
         <span className="text-gray-400">T</span><span>自动油门</span>
         <span className="text-gray-400">1/2</span><span>引擎</span>
         <span className="text-gray-400">[/]</span><span>襟翼</span>
-        <button 
-          onClick={() => setShowScenarioPanel(true)}
-          className="ml-auto px-2 py-0.5 bg-amber-900/30 border border-amber-700/50 rounded text-amber-400 text-[9px] hover:bg-amber-900/50 transition-colors"
-        >
-          {state.activeScenario === 'normal' ? '特殊情况' : `场景: ${SCENARIOS.find(s => s.id === state.activeScenario)?.name || '正常'}`}
-        </button>
       </div>
     </div>
   );
