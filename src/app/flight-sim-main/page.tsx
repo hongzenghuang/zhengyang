@@ -215,13 +215,40 @@ export default function FlightSimulatorPage() {
     }
   }, [state.airspeed, state.altitude, state.verticalSpeed, state.roll, state.engine1Enabled, state.engine2Enabled, state.gearDown, state.flapsAngle, state.autopilotEnabled, state.targetAltitude]);
 
-  // Voice alerts using Web Speech API - improved initialization
+  // Voice alerts using Web Speech API - with user interaction requirement
+  const [audioInitialized, setAudioInitialized] = useState(false);
+  
+  // Initialize audio on first user interaction
+  useEffect(() => {
+    const initAudio = () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        // Warm up speech synthesis
+        const utterance = new SpeechSynthesisUtterance('');
+        utterance.volume = 0;
+        window.speechSynthesis.speak(utterance);
+        setAudioInitialized(true);
+      }
+      // Remove listeners after initialization
+      document.removeEventListener('click', initAudio);
+      document.removeEventListener('keydown', initAudio);
+    };
+    
+    document.addEventListener('click', initAudio);
+    document.addEventListener('keydown', initAudio);
+    
+    return () => {
+      document.removeEventListener('click', initAudio);
+      document.removeEventListener('keydown', initAudio);
+    };
+  }, []);
+
   useEffect(() => {
     const priorityAlert = getPriorityAlert(alerts);
     const now = Date.now();
     
-    // Only speak if alert changed and enough time has passed (prevent spam)
-    if (priorityAlert?.audio && 
+    // Only speak if audio is initialized, alert changed, and enough time has passed
+    if (audioInitialized && 
+        priorityAlert?.audio && 
         priorityAlert.audio !== lastAlertAudioRef.current &&
         now - lastAlertTimeRef.current > 3000) {
       
@@ -255,7 +282,7 @@ export default function FlightSimulatorPage() {
     if (!priorityAlert) {
       lastAlertAudioRef.current = null;
     }
-  }, [alerts]);
+  }, [alerts, audioInitialized]);
 
   // Speed/altitude trend calculation (every 500ms)
   useEffect(() => {
@@ -451,8 +478,38 @@ export default function FlightSimulatorPage() {
             background: 'linear-gradient(to top, rgba(255,200,100,0.15), transparent)',
           }} />
 
-        <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+        {/* Horizon line - thicker and more visible */}
+        <div className="absolute left-0 right-0 h-0.5 bg-white/40 pointer-events-none"
           style={{ top: `${50 + state.pitch * 2}%`, transform: `rotate(${-state.roll}deg)`, transformOrigin: 'center' }} />
+        
+        {/* Attitude warning overlay - prevents spatial disorientation */}
+        {(Math.abs(state.pitch) > 15 || Math.abs(state.roll) > 30) && state.altitude > 0 && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+            <div className={`px-4 py-2 rounded font-bold text-sm tracking-wider animate-pulse ${
+              Math.abs(state.pitch) > 20 || Math.abs(state.roll) > 45 
+                ? 'bg-red-600/80 text-white' 
+                : 'bg-amber-500/80 text-black'
+            }`}>
+              {Math.abs(state.pitch) > 20 ? '⚠ PITCH' : Math.abs(state.roll) > 45 ? '⚠ BANK' : '⚠ ATTITUDE'}
+            </div>
+          </div>
+        )}
+        
+        {/* Digital attitude display in external view */}
+        <div className="absolute top-1/2 left-2 -translate-y-1/2 flex flex-col gap-1 text-[10px] pointer-events-none">
+          <div className="flex items-center gap-1">
+            <span className="text-green-400/60 w-8">PIT</span>
+            <span className={`font-bold font-mono ${state.pitch > 15 ? 'text-amber-400' : state.pitch < -10 ? 'text-amber-400' : 'text-green-400'}`}>
+              {state.pitch > 0 ? '+' : ''}{state.pitch.toFixed(1)}°
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-green-400/60 w-8">ROL</span>
+            <span className={`font-bold font-mono ${Math.abs(state.roll) > 30 ? 'text-amber-400' : 'text-green-400'}`}>
+              {state.roll > 0 ? 'R+' : state.roll < 0 ? 'L' : ''}{Math.abs(state.roll).toFixed(1)}°
+            </span>
+          </div>
+        </div>
         
         <div className="absolute top-2 left-3 flex gap-4 text-[10px]">
           <div className="flex flex-col items-center">
@@ -653,20 +710,21 @@ export default function FlightSimulatorPage() {
               {/* Attitude Indicator (Center) - Fixed transform order */}
               <circle cx="150" cy="180" r="98" fill="none" stroke="#333" strokeWidth="3" />
               <g clipPath="url(#attitudeClip)">
-                {/* Sky/Ground with rotation - pitch up moves horizon down, roll right tilts left */}
-                <g transform={`translate(0, ${state.pitch * 3}) rotate(${-state.roll}, 150, 180)`}>
-                  <rect x="0" y="0" width="300" height="180" fill="url(#skyGrad)" />
-                  <rect x="0" y="180" width="300" height="220" fill="url(#groundGrad)" />
-                  <line x1="0" y1="180" x2="300" y2="180" stroke="white" strokeWidth="2" />
-                  {/* Pitch ladder */}
-                  {[-15, -10, -5, 5, 10, 15].map(p => (
+                {/* Sky/Ground with rotation - FIXED: translate first, then rotate */}
+                <g transform={`rotate(${-state.roll}, 150, 180) translate(0, ${-state.pitch * 3})`}>
+                  <rect x="0" y="-100" width="300" height="280" fill="url(#skyGrad)" />
+                  <rect x="0" y="180" width="300" height="320" fill="url(#groundGrad)" />
+                  {/* Horizon line - thicker and more visible */}
+                  <line x1="0" y1="180" x2="300" y2="180" stroke="white" strokeWidth="3" />
+                  {/* Pitch ladder - more detailed */}
+                  {[-20, -15, -10, -5, 5, 10, 15, 20].map(p => (
                     <g key={`pitch-${p}`}>
-                      <line x1="120" y1={180 - p * 4} x2="135" y2={180 - p * 4} stroke="white" strokeWidth="1" />
-                      <line x1="165" y1={180 - p * 4} x2="180" y2={180 - p * 4} stroke="white" strokeWidth="1" />
-                      <text x="115" y={183 - p * 4} textAnchor="end" fill="white" fontSize="8" fontFamily="monospace">
+                      <line x1="110" y1={180 - p * 4} x2="140" y2={180 - p * 4} stroke="white" strokeWidth={Math.abs(p) % 10 === 0 ? 2 : 1} />
+                      <line x1="160" y1={180 - p * 4} x2="190" y2={180 - p * 4} stroke="white" strokeWidth={Math.abs(p) % 10 === 0 ? 2 : 1} />
+                      <text x="105" y={183 - p * 4} textAnchor="end" fill="white" fontSize="9" fontWeight="bold" fontFamily="monospace">
                         {Math.abs(p)}
                       </text>
-                      <text x="185" y={183 - p * 4} textAnchor="start" fill="white" fontSize="8" fontFamily="monospace">
+                      <text x="195" y={183 - p * 4} textAnchor="start" fill="white" fontSize="9" fontWeight="bold" fontFamily="monospace">
                         {Math.abs(p)}
                       </text>
                     </g>
@@ -702,6 +760,16 @@ export default function FlightSimulatorPage() {
                 {/* Tail */}
                 <rect x="147" y="190" width="6" height="12" fill="#ffcc00" />
               </g>
+
+              {/* Digital pitch/roll readout - prevents spatial disorientation */}
+              <rect x="115" y="285" width="70" height="35" fill="#000" stroke="#00ff88" strokeWidth="1" rx="3" />
+              <text x="150" y="298" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">PITCH / ROLL</text>
+              <text x="130" y="313" textAnchor="middle" fill={state.pitch > 15 ? '#ffaa00' : state.pitch < -10 ? '#ffaa00' : '#00ff88'} fontSize="11" fontWeight="bold" fontFamily="monospace">
+                {state.pitch > 0 ? '+' : ''}{state.pitch.toFixed(1)}°
+              </text>
+              <text x="170" y="313" textAnchor="middle" fill={Math.abs(state.roll) > 30 ? '#ffaa00' : '#00ff88'} fontSize="11" fontWeight="bold" fontFamily="monospace">
+                {state.roll > 0 ? '+' : ''}{state.roll.toFixed(1)}°
+              </text>
 
               {/* Altitude Tape (Right) */}
               <rect x="240" y="80" width="55" height="200" fill="#0a0a0a" stroke="#333" strokeWidth="1" />
