@@ -1,6 +1,6 @@
 import { AircraftState } from './types';
 
-// Autothrottle logic with smooth control
+// Autothrottle with smooth, stable control
 export function applyAutothrottle(
   state: AircraftState,
   deltaTime: number
@@ -15,9 +15,16 @@ export function applyAutothrottle(
   // Calculate airspeed error
   const speedError = state.targetAirspeed - state.airspeed;
   
-  // Adjust throttle smoothly (max 5% per second)
-  const throttleAdjustment = speedError * 0.4;
-  const maxAdjustment = 5 * dt;
+  // Dead zone - don't adjust if within 5 knots of target
+  if (Math.abs(speedError) < 5) {
+    return state;
+  }
+  
+  // Conservative gain - much smoother control
+  // Max adjustment: 2% per second (was 5%)
+  const gain = 0.08; // Reduced from 0.4
+  const throttleAdjustment = speedError * gain;
+  const maxAdjustment = 2 * dt; // Max 2% per second
   const clampedAdjustment = Math.max(-maxAdjustment, Math.min(maxAdjustment, throttleAdjustment));
   
   newState.throttle = Math.max(0, Math.min(100, state.throttle + clampedAdjustment));

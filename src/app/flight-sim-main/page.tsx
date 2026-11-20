@@ -734,8 +734,8 @@ export default function FlightSimulatorPage() {
               {/* Attitude Indicator (Center) - Fixed transform order */}
               <circle cx="150" cy="180" r="98" fill="none" stroke="#333" strokeWidth="3" />
               <g clipPath="url(#attitudeClip)">
-                {/* Sky/Ground with rotation - FIXED: translate first, then rotate */}
-                <g transform={`rotate(${-state.roll}, 150, 180) translate(0, ${-state.pitch * 3})`}>
+                {/* Sky/Ground with rotation - pitch up = horizon moves DOWN (more sky visible) */}
+                <g transform={`rotate(${-state.roll}, 150, 180) translate(0, ${state.pitch * 3})`}>
                   <rect x="0" y="-100" width="300" height="280" fill="url(#skyGrad)" />
                   <rect x="0" y="180" width="300" height="320" fill="url(#groundGrad)" />
                   {/* Horizon line - thicker and more visible */}
