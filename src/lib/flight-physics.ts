@@ -215,9 +215,10 @@ export function updateFlightPhysics(
     yawFromAsymmetry = thrustDiff / MAX_THRUST_PER_ENGINE * 2; // degrees per frame
   }
 
-  // Forward forces
+  // Forward forces - reduced gravity effect for better climb performance
   const thrustForward = totalThrust * Math.cos(pitchRad);
-  const gravityForward = weight * Math.sin(pitchRad);
+  // Gravity component along flight path - reduced to 40% for more realistic climb
+  const gravityForward = weight * Math.sin(pitchRad) * 0.4;
   const groundFriction = isOnGround ? weight * 0.02 : 0;
   const netForceForward = thrustForward - drag - gravityForward - groundFriction - reverseForce;
   const accelerationForward = netForceForward / MASS;
@@ -228,19 +229,20 @@ export function updateFlightPhysics(
   const newIAS = newTAS * Math.sqrt(Math.max(0.01, densityRatio));
   newState.airspeed = Math.max(0, newIAS);
 
-  // Vertical forces - improved altitude control
+  // Vertical forces - improved for stable climb
   if (isOnGround) {
     newState.verticalSpeed = 0;
     newState.altitude = 0;
   } else {
-    // Lift acts perpendicular to wings, so vertical component depends on roll
+    // Lift acts perpendicular to wings
     const liftVertical = lift * Math.cos(rollRad);
-    // Weight always acts downward
+    // Add pitch component to vertical force (pitch up = more vertical lift)
+    const pitchLiftBoost = totalThrust * Math.sin(pitchRad) * 0.5;
     const gravityVertical = weight;
-    const netForceVertical = liftVertical - gravityVertical;
+    const netForceVertical = liftVertical + pitchLiftBoost - gravityVertical;
     const verticalAcceleration = netForceVertical / MASS;
 
-    // More responsive vertical speed changes
+    // Responsive vertical speed changes
     const vsChange = verticalAcceleration * 80 * dt;
     newState.verticalSpeed = state.verticalSpeed + vsChange;
 
