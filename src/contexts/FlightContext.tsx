@@ -25,6 +25,7 @@ const FlightContext = createContext<FlightContextType | undefined>(undefined);
 export function FlightProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AircraftState>(initialAircraftState);
   const stateRef = useRef(state);
+  const pendingUpdatesRef = useRef<Partial<AircraftState>>({});
   const animationFrameRef = useRef<number | undefined>(undefined);
   const lastTimeRef = useRef<number>(Date.now());
 
@@ -39,14 +40,16 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
-
-  useEffect(() => {
     const update = () => {
       const now = Date.now();
       const deltaTime = (now - lastTimeRef.current) / 1000;
       lastTimeRef.current = now;
+
+      // Apply pending updates from keyboard/UI
+      if (Object.keys(pendingUpdatesRef.current).length > 0) {
+        stateRef.current = { ...stateRef.current, ...pendingUpdatesRef.current };
+        pendingUpdatesRef.current = {};
+      }
 
       let newState = updateFlightPhysics(stateRef.current, deltaTime);
       newState = applyAutopilot(newState, deltaTime);
@@ -146,38 +149,40 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
         break;
     }
 
-    stateRef.current = { ...prev, ...updates };
-    setState(s => ({ ...s, ...updates }));
+    // Queue updates to be applied in next animation frame
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates };
   }, []);
 
   const setThrottle = useCallback((value: number) => {
     const clamped = Math.max(0, Math.min(100, value));
-    stateRef.current = { ...stateRef.current, throttle: clamped };
-    setState(prev => ({ ...prev, throttle: clamped }));
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, throttle: clamped };
   }, []);
 
   const setTargetHeading = useCallback((heading: number) => {
-    setState(prev => ({ ...prev, targetHeading: ((heading % 360) + 360) % 360 }));
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, targetHeading: ((heading % 360) + 360) % 360 };
   }, []);
 
   const setTargetAltitude = useCallback((altitude: number) => {
-    setState(prev => ({ ...prev, targetAltitude: Math.max(0, Math.min(45000, altitude)) }));
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, targetAltitude: Math.max(0, Math.min(45000, altitude)) };
   }, []);
 
   const setTargetAirspeed = useCallback((speed: number) => {
-    setState(prev => ({ ...prev, targetAirspeed: Math.max(100, Math.min(350, speed)) }));
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, targetAirspeed: Math.max(100, Math.min(350, speed)) };
   }, []);
 
   const adjustTargetHeading = useCallback((delta: number) => {
-    setState(prev => ({ ...prev, targetHeading: (((prev.targetHeading + delta) % 360) + 360) % 360 }));
+    const current = stateRef.current.targetHeading;
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, targetHeading: (((current + delta) % 360) + 360) % 360 };
   }, []);
 
   const adjustTargetAltitude = useCallback((delta: number) => {
-    setState(prev => ({ ...prev, targetAltitude: Math.max(0, Math.min(45000, prev.targetAltitude + delta)) }));
+    const current = stateRef.current.targetAltitude;
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, targetAltitude: Math.max(0, Math.min(45000, current + delta)) };
   }, []);
 
   const adjustTargetAirspeed = useCallback((delta: number) => {
-    setState(prev => ({ ...prev, targetAirspeed: Math.max(100, Math.min(350, prev.targetAirspeed + delta)) }));
+    const current = stateRef.current.targetAirspeed;
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, targetAirspeed: Math.max(100, Math.min(350, current + delta)) };
   }, []);
 
   const setScenario = useCallback((scenario: FlightScenario) => {
