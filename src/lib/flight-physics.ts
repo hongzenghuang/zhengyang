@@ -177,7 +177,6 @@ export function updateFlightPhysics(
   // Ground roll limits - allow pitch up for rotation
   if (isOnGround) {
     newState.roll = Math.max(-5, Math.min(5, state.roll));
-    // Allow pitch up to 20° for takeoff rotation
     newState.pitch = Math.max(-5, Math.min(20, state.pitch));
   }
 
@@ -188,17 +187,20 @@ export function updateFlightPhysics(
     reverseForce = totalThrust * REVERSE_THRUST_FACTOR * reverseFactor;
   }
 
-  // IAS to TAS
+  // IAS to TAS conversion
   const densityRatio = getDensityRatio(state.altitude);
   const tas = state.airspeed / Math.sqrt(Math.max(0.01, densityRatio));
-  const velocityFtS = tas * 1.68781;
+  const velocityFtS = tas * 1.68781; // knots to ft/s
 
-  // Aerodynamic forces (with scenario effects)
+  // Aerodynamic forces
   const airDensity = getAirDensity(state.altitude);
   const cl = getLiftCoefficient(state.pitch, state.flapsAngle, state.airspeed, state.activeScenario);
   const cd = getDragCoefficient(cl, state.flapsAngle, state.gearDown, state.activeScenario);
 
+  // Dynamic pressure: q = 0.5 * ρ * V²
   const dynamicPressure = 0.5 * airDensity * velocityFtS * velocityFtS;
+  
+  // Lift and drag forces
   const lift = dynamicPressure * WING_AREA * cl;
   const drag = dynamicPressure * WING_AREA * cd;
   const weight = CRUISE_WEIGHT;
@@ -210,51 +212,50 @@ export function updateFlightPhysics(
   const enginesActive = (state.engine1Enabled ? 1 : 0) + (state.engine2Enabled ? 1 : 0);
   let yawFromAsymmetry = 0;
   if (enginesActive === 1 && !isOnGround) {
-    // Single engine causes yaw toward dead engine
     const thrustDiff = n1Thrust1 - n1Thrust2;
-    yawFromAsymmetry = thrustDiff / MAX_THRUST_PER_ENGINE * 2; // degrees per frame
+    yawFromAsymmetry = thrustDiff / MAX_THRUST_PER_ENGINE * 2;
   }
 
-  // Forward forces - proper thrust and drag balance
-  const thrustForward = totalThrust * Math.cos(pitchRad);
-  // Gravity component along flight path - minimal effect
-  const gravityForward = weight * Math.sin(pitchRad) * 0.1;
-  const groundFriction = isOnGround ? weight * 0.015 : 0;
-  const netForceForward = thrustForward - drag - gravityForward - groundFriction - reverseForce;
-  const accelerationForward = netForceForward / MASS;
+  // === HORIZONTAL MOTION (along flight path) ===
+  // Forces along flight path: Thrust - Drag - Gravity component - Friction - Reverse
+  const thrustAlongPath = totalThrust * Math.cos(pitchRad);
+  const gravityAlongPath = weight * Math.sin(pitchRad); // Positive when climbing
+  const groundFriction = isOnGround ? weight * 0.01 : 0;
+  
+  const netForceAlongPath = thrustAlongPath - drag - gravityAlongPath - groundFriction - reverseForce;
+  const accelAlongPath = netForceAlongPath / MASS;
 
-  // Update airspeed
-  const newTASFtS = Math.max(0, velocityFtS + accelerationForward * dt);
-  const newTAS = newTASFtS / 1.68781;
+  // Update velocity (TAS in ft/s)
+  const newTASFtS = Math.max(0, velocityFtS + accelAlongPath * dt);
+  const newTAS = newTASFtS / 1.68781; // ft/s to knots
   const newIAS = newTAS * Math.sqrt(Math.max(0.01, densityRatio));
   newState.airspeed = Math.max(0, newIAS);
 
-  // Vertical forces - stable and responsive
+  // === VERTICAL MOTION ===
   if (isOnGround) {
     newState.verticalSpeed = 0;
     newState.altitude = 0;
   } else {
-    // Lift acts perpendicular to wings
-    const liftVertical = lift * Math.cos(rollRad);
-    // Thrust contributes to vertical force when pitched up
-    const thrustVertical = totalThrust * Math.sin(pitchRad) * 0.25;
-    const gravityVertical = weight;
-    const netForceVertical = liftVertical + thrustVertical - gravityVertical;
-    const verticalAcceleration = netForceVertical / MASS;
+    // Forces perpendicular to flight path
+    // Lift acts perpendicular to velocity vector (upward when level)
+    const liftVertical = lift * Math.cos(rollRad) * Math.cos(pitchRad);
+    // Weight always acts downward
+    const weightVertical = weight;
+    
+    const netForceVertical = liftVertical - weightVertical;
+    const accelVertical = netForceVertical / MASS;
 
-    // Responsive vertical speed changes
-    const vsChange = verticalAcceleration * 65 * dt;
+    // Update vertical speed (ft/min)
+    const vsChange = accelVertical * 60 * dt; // ft/s² to ft/min per dt
     newState.verticalSpeed = state.verticalSpeed + vsChange;
 
-    // Gentle damping to stabilize
-    if (Math.abs(state.verticalSpeed) < 15 && Math.abs(verticalAcceleration) < 0.08) {
-      newState.verticalSpeed = newState.verticalSpeed * 0.96;
-    }
-
+    // Damping for stability
+    newState.verticalSpeed = newState.verticalSpeed * 0.995;
     newState.verticalSpeed = Math.max(-6000, Math.min(6000, newState.verticalSpeed));
 
+    // Update altitude
     const avgVS = (state.verticalSpeed + newState.verticalSpeed) / 2;
-    const altitudeChange = (avgVS / 60) * dt;
+    const altitudeChange = (avgVS / 60) * dt; // ft/min to ft per dt
     newState.altitude = Math.max(0, state.altitude + altitudeChange);
 
     if (newState.altitude <= 0) {
@@ -263,7 +264,7 @@ export function updateFlightPhysics(
     }
   }
 
-  // Heading from roll + asymmetric thrust yaw
+  // === HEADING (turn rate from bank angle) ===
   const turnRate = isOnGround ? state.roll * 0.005 : state.roll * 0.03;
   newState.heading = (state.heading + (turnRate + yawFromAsymmetry) * dt + 360) % 360;
 
@@ -272,9 +273,7 @@ export function updateFlightPhysics(
   newState.groundSpeed = newTAS2 * 0.98;
 
   // Very gentle stability - almost no automatic correction
-  // Pilot has full manual control
   if (!isOnGround) {
-    // Extremely weak damping only at extreme attitudes
     if (Math.abs(state.pitch) > 15) {
       newState.pitch = state.pitch * (1 - dt * 0.002);
     }
