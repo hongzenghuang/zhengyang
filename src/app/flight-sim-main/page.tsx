@@ -140,6 +140,12 @@ export default function FlightSimulatorPage() {
   const [masterWarningFlash, setMasterWarningFlash] = useState(false);
   const lastAlertAudioRef = useRef<string | null>(null);
   const lastAlertTimeRef = useRef<number>(0);
+  
+  // Speed and altitude trend tracking (for trend arrows)
+  const prevAirspeedRef = useRef(0);
+  const prevAltitudeRef = useRef(0);
+  const [speedTrend, setSpeedTrend] = useState(0); // kts per 6 seconds
+  const [altTrend, setAltTrend] = useState(0); // ft/min
 
   useKeyboardControls({ dispatch, enabled: true });
 
@@ -246,6 +252,20 @@ export default function FlightSimulatorPage() {
       lastAlertAudioRef.current = null;
     }
   }, [alerts]);
+
+  // Speed/altitude trend calculation (every 500ms)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const speedDelta = (state.airspeed - prevAirspeedRef.current) * 12; // extrapolate to 6 sec
+      setSpeedTrend(speedDelta);
+      prevAirspeedRef.current = state.airspeed;
+      
+      const altDelta = (state.altitude - prevAltitudeRef.current) * 120; // extrapolate to per minute
+      setAltTrend(altDelta);
+      prevAltitudeRef.current = state.altitude;
+    }, 500);
+    return () => clearInterval(interval);
+  }, [state.airspeed, state.altitude]);
 
   useEffect(() => {
     let animFrame: number;
@@ -403,8 +423,31 @@ export default function FlightSimulatorPage() {
               <div key={`gline-${i}`} className="ground-line"
                 style={{ width: '200%', bottom: `${i * 12}%`, left: `${-groundOffset % 200}px`, opacity: 0.3 - i * 0.03 }} />
             ))}
+            {/* Runway when on ground */}
+            {state.altitude < 100 && (
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-full bg-[#3a3a3a] border-x border-[#555]">
+                {/* Center line markings */}
+                {[0, 1, 2, 3, 4, 5].map(i => (
+                  <div key={`rwy-${i}`} className="absolute left-1/2 -translate-x-1/2 w-1 h-4 bg-white/60"
+                    style={{ bottom: `${((i * 20 - groundOffset * 2) % 120 + 120) % 120}%` }} />
+                ))}
+                {/* Edge lights */}
+                <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-t from-blue-400/40 via-blue-400/20 to-transparent" />
+                <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-t from-blue-400/40 via-blue-400/20 to-transparent" />
+              </div>
+            )}
           </div>
         )}
+
+        {/* Horizon glow */}
+        <div className="absolute left-0 right-0 h-8 pointer-events-none"
+          style={{ 
+            bottom: `${50 + smoothPitch * 1.5 - 3}%`, 
+            transform: `rotate(${smoothRoll}deg)`, 
+            transformOrigin: 'center',
+            background: 'linear-gradient(to top, rgba(255,200,100,0.15), transparent)',
+            transition: 'transform 0.05s linear'
+          }} />
 
         <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
           style={{ bottom: `${50 + smoothPitch * 1.5}%`, transform: `rotate(${smoothRoll}deg)`, transformOrigin: 'center', transition: 'transform 0.05s linear' }} />
@@ -590,6 +633,18 @@ export default function FlightSimulatorPage() {
               <text x="32" y="184" textAnchor="middle" fill="#00ff88" fontSize="14" fontWeight="bold" fontFamily="monospace">
                 {Math.round(state.airspeed)}
               </text>
+              {/* Speed trend arrow */}
+              {Math.abs(speedTrend) > 2 && (
+                <g transform={`translate(62, 180)`}>
+                  {speedTrend > 0 ? (
+                    <polygon points="0,-8 4,0 -4,0" fill="#00ff88" opacity="0.8" />
+                  ) : (
+                    <polygon points="0,8 4,0 -4,0" fill="#ffaa00" opacity="0.8" />
+                  )}
+                  <line x1="0" y1={speedTrend > 0 ? 0 : 0} x2="0" y2={speedTrend > 0 ? -Math.min(15, Math.abs(speedTrend) * 0.5) : Math.min(15, Math.abs(speedTrend) * 0.5)} 
+                    stroke={speedTrend > 0 ? '#00ff88' : '#ffaa00'} strokeWidth="2" />
+                </g>
+              )}
               <text x="32" y="70" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">IAS</text>
               <text x="32" y="300" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">KTS</text>
 
@@ -666,6 +721,18 @@ export default function FlightSimulatorPage() {
               <text x="267" y="184" textAnchor="middle" fill="#00ff88" fontSize="12" fontWeight="bold" fontFamily="monospace">
                 {Math.round(state.altitude).toLocaleString()}
               </text>
+              {/* Altitude trend arrow */}
+              {Math.abs(altTrend) > 100 && (
+                <g transform={`translate(237, 180)`}>
+                  {altTrend > 0 ? (
+                    <polygon points="0,-8 4,0 -4,0" fill="#00ff88" opacity="0.8" />
+                  ) : (
+                    <polygon points="0,8 4,0 -4,0" fill="#ffaa00" opacity="0.8" />
+                  )}
+                  <line x1="0" y1={0} x2="0" y2={altTrend > 0 ? -Math.min(15, Math.abs(altTrend) / 200) : Math.min(15, Math.abs(altTrend) / 200)} 
+                    stroke={altTrend > 0 ? '#00ff88' : '#ffaa00'} strokeWidth="2" />
+                </g>
+              )}
               <text x="267" y="70" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">ALT</text>
               <text x="267" y="300" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">FT</text>
 

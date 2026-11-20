@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { AircraftState, ControlAction, FlightScenario } from '@/lib/types';
-import { initialAircraftState, updateFlightPhysics, getScenarioInitialState } from '@/lib/flight-physics';
+import { initialAircraftState, updateFlightPhysics, getScenarioInitialState, takeoffReadyState } from '@/lib/flight-physics';
 import { applyAutopilot } from '@/lib/autopilot';
 import { applyAutothrottle } from '@/lib/autothrottle';
 import { audioSystem } from '@/lib/audio';
@@ -27,6 +27,16 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
   const stateRef = useRef(state);
   const animationFrameRef = useRef<number | undefined>(undefined);
   const lastTimeRef = useRef<number>(Date.now());
+
+  // Check if coming from tutorial - set takeoff state
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('startTakeoff') === 'true') {
+      sessionStorage.removeItem('startTakeoff');
+      stateRef.current = takeoffReadyState;
+      setState(takeoffReadyState);
+      lastTimeRef.current = Date.now();
+    }
+  }, []);
 
   useEffect(() => {
     stateRef.current = state;

@@ -27,26 +27,31 @@ function getDensityRatio(altitude: number): number {
 function getLiftCoefficient(
   pitch: number, flapsAngle: number, airspeed: number, scenario: FlightScenario
 ): number {
-  const baseCL = 0.15;
-  const pitchCL = pitch * 0.15;
-  const flapsCL = flapsAngle * 0.015;
+  // Redesigned for realistic takeoff performance
+  // At pitch=10, flaps=15: CL=1.85 (takeoff rotation)
+  // At pitch=2, flaps=0: CL=0.51 (cruise)
+  // Stall speed clean ≈179kts, with flaps15 ≈136kts
+  const baseCL = 0.35;
+  const pitchCL = pitch * 0.10;
+  const flapsCL = flapsAngle * 0.045;
   
   // Icing reduces lift by up to 30%
   const icingPenalty = scenario === 'icing' ? 0.7 : 1.0;
   
-  const stallSpeed = 110 + flapsAngle * 1.2;
+  // Stall model: below stall speed, lift degrades
+  const stallSpeed = 130 - flapsAngle * 1.5;
   const stallFactor = airspeed < stallSpeed ? Math.max(0.3, airspeed / stallSpeed) : 1;
   
-  return Math.max(-0.3, Math.min(2.5, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
+  return Math.max(-0.3, Math.min(2.8, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
 }
 
 function getDragCoefficient(
   liftCoeff: number, flapsAngle: number, gearDown: boolean, scenario: FlightScenario
 ): number {
-  const baseCD = 0.018;
-  const inducedDrag = 0.035 * liftCoeff * liftCoeff;
-  const flapsDrag = flapsAngle * 0.0025;
-  const gearDrag = gearDown ? 0.012 : 0;
+  const baseCD = 0.020;
+  const inducedDrag = 0.040 * liftCoeff * liftCoeff;
+  const flapsDrag = flapsAngle * 0.003;
+  const gearDrag = gearDown ? 0.015 : 0;
   // Icing adds extra drag
   const icingDrag = scenario === 'icing' ? 0.015 : 0;
   return baseCD + inducedDrag + flapsDrag + gearDrag + icingDrag;
@@ -301,6 +306,19 @@ export const initialAircraftState: AircraftState = {
   activeScenario: 'normal',
   scenarioTimer: 0,
   scenarioMessage: '',
+};
+
+// Takeoff-ready state: flaps set, throttle advancing, on runway
+export const takeoffReadyState: AircraftState = {
+  ...initialAircraftState,
+  throttle: 95,
+  flapsAngle: 15,
+  gearDown: true,
+  heading: 270,
+  targetAltitude: 10000,
+  targetAirspeed: 250,
+  targetHeading: 270,
+  scenarioMessage: '起飞推力设定 — 准备抬轮 VR≈180kts',
 };
 
 // Scenario-specific initial states

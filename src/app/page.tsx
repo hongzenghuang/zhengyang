@@ -11,7 +11,7 @@ interface TutorialStep {
   description: string;
   principle: string;
   keys: { key: string; label: string }[];
-  animation: 'welcome' | 'pitch' | 'throttle' | 'engine' | 'takeoff' | 'gear' | 'flaps' | 'autopilot' | 'autothrottle' | 'reverse' | 'ground' | 'ready';
+  animation: 'welcome' | 'pitch' | 'throttle' | 'engine' | 'takeoff' | 'gear' | 'flaps' | 'autopilot' | 'autothrottle' | 'reverse' | 'ground' | 'emergency_engine' | 'emergency_stall' | 'emergency_windshear' | 'ready';
 }
 
 const tutorialSteps: TutorialStep[] = [
@@ -136,6 +136,42 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: 12,
+    title: '紧急情况：引擎故障',
+    description: '单引擎失效是双发飞机最常见的紧急情况。处置程序：① 保持飞机控制（最重要！）② 确认故障引擎 ③ 关闭故障引擎 ④ 调整油门维持速度 ⑤ 宣布 MAYDAY ⑥ 寻找最近合适机场备降。777-9 设计上可以单发飞行超过 300 分钟（ETOPS-330）。',
+    principle: '单发失效时，工作引擎的推力产生不对称偏航力矩，飞机会向失效引擎方向偏转。需要用方向舵（本模拟器中通过滚转控制模拟）抵消偏航。关键原则：Aviate（飞行）→ Navigate（导航）→ Communicate（通讯）。首先保持飞机可控，然后导航到安全区域，最后才通讯报告。单发时最大爬升高度约 25,000 英尺（driftdown altitude）。',
+    keys: [
+      { key: '1', label: '关闭故障引擎（如左发故障按 1）' },
+      { key: 'w', label: '工作引擎加油门至最大连续推力（MCT）' },
+      { key: 'ArrowLeft', label: '修正偏航（向工作引擎方向微调坡度）' },
+      { key: 'ArrowDown', label: '如高度过高，适当推杆下降至漂移高度' },
+    ],
+    animation: 'emergency_engine',
+  },
+  {
+    id: 13,
+    title: '紧急情况：失速改出',
+    description: '失速发生在迎角过大、空速过低时，机翼无法产生足够升力。改出程序：① 推杆低头（最重要！减小迎角）② 加油门至最大 ③ 改平机翼 ④ 速度恢复后柔和拉杆爬升。注意：失速时飞机可能剧烈抖动、机翼自动下坠，这是正常现象。',
+    principle: '失速不是"引擎停了"，而是机翼迎角超过临界值（约 15-18°），气流从机翼上表面分离，升力急剧下降。任何速度、任何姿态都可能失速——关键因素是迎角而非空速。改出核心：减小迎角（推杆低头）。777-9 配备抖杆器（stick shaker）和推杆器（stick pusher），在接近失速时自动警告并推杆。模拟器中当空速低于失速速度时，会触发 STALL 语音警告。',
+    keys: [
+      { key: 'ArrowDown', label: '推杆低头 — 减小迎角（最关键的一步！）' },
+      { key: 'w', label: '加油门至 TOGA — 最大推力恢复速度' },
+      { key: 'ArrowLeft', label: '改平机翼 — 如有滚转，先改平' },
+    ],
+    animation: 'emergency_stall',
+  },
+  {
+    id: 14,
+    title: '紧急情况：风切变改出',
+    description: '风切变是短距离内风向/风速剧烈变化，尤其在低空进近时极其危险。改出程序：① 立即加油门至 TOGA ② 拉杆至最佳爬升姿态（约 15°）③ 不要改变构型（不收襟翼/起落架）④ 跟随飞行指引仪 ⑤ 如无法爬升，执行复飞。',
+    principle: '微下击暴流（microburst）是最危险的风切变类型：飞机先遭遇强逆风（空速增加），然后是下沉气流，最后是强顺风（空速骤降）。飞行员可能被第一阶段误导而减小推力，导致在第三阶段失去速度。改出关键：不要改变飞机构型（襟翼/起落架），因为改变构型会导致升力/阻力突变。777-9 配备预测性风切变警告系统（PWS），可在前方 3 海里探测风切变。',
+    keys: [
+      { key: 'w', label: '立即推满油门 TOGA — 最大推力' },
+      { key: 'ArrowUp', label: '拉杆至 15° 仰角 — 最佳爬升姿态' },
+    ],
+    animation: 'emergency_windshear',
+  },
+  {
+    id: 15,
     title: '准备起飞',
     description: '您已学习完所有操控方法和飞行原理。现在可以进入模拟飞行，体验驾驶波音 777-9 的乐趣！记住标准起飞流程：襟翼 → 油门 → 抬轮 → 收起落架。',
     principle: '完整飞行剖面：起飞（Takeoff）→ 爬升（Climb）→ 巡航（Cruise）→ 下降（Descent）→ 进近（Approach）→ 着陆（Landing）。每个阶段有不同的速度、高度和构型要求。777-9 的典型巡航参数：高度 35,000-43,000 英尺，马赫数 0.84（约 480 节 TAS），油耗约 6,800 公斤/小时。',
@@ -798,6 +834,255 @@ function ReadyAnimation() {
   );
 }
 
+function EmergencyEngineAnimation() {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setPhase(p => (p + 1) % 160), 50);
+    return () => clearInterval(interval);
+  }, []);
+  const engineFailed = phase > 30;
+  const yawAngle = engineFailed ? Math.min(8, (phase - 30) * 0.3) : 0;
+  const corrected = phase > 80;
+  const finalYaw = corrected ? Math.max(0, yawAngle - (phase - 80) * 0.2) : yawAngle;
+  return (
+    <svg viewBox="0 0 400 240" className="w-full h-full">
+      <rect width="400" height="240" fill="#0a0a0a" />
+      {/* Aircraft top view with yaw */}
+      <g transform={`translate(200, 110) rotate(${finalYaw})`}>
+        <ellipse cx="0" cy="0" rx="15" ry="55" fill="#2a2a2a" stroke="#444" />
+        <polygon points="-15,-8 -100,-16 -90,-12 -15,8" fill="#1a1a1a" stroke="#333" />
+        <polygon points="15,-8 100,-16 90,-12 15,8" fill="#1a1a1a" stroke="#333" />
+        {/* Left engine - fails */}
+        <g transform="translate(-50, -10)">
+          <ellipse cx="0" cy="0" rx="14" ry="8" fill={engineFailed ? '#3a1a1a' : '#1a3a1a'} stroke={engineFailed ? '#ff4444' : '#00ff88'} strokeWidth="2" />
+          {!engineFailed && (
+            <ellipse cx="16" cy="0" rx="6" ry="4" fill="#ff6600" opacity="0.6">
+              <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.4s" repeatCount="indefinite" />
+            </ellipse>
+          )}
+          {engineFailed && (
+            <>
+              <text x="0" y="3" textAnchor="middle" fill="#ff4444" fontSize="7" fontFamily="monospace" fontWeight="bold">FAIL</text>
+              {/* Smoke */}
+              <circle cx="18" cy="-3" r="4" fill="#666" opacity="0.4">
+                <animate attributeName="r" values="4;8;4" dur="1s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.4;0.1;0.4" dur="1s" repeatCount="indefinite" />
+              </circle>
+            </>
+          )}
+          <text x="0" y="-14" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">ENG 1</text>
+        </g>
+        {/* Right engine - working */}
+        <g transform="translate(50, -10)">
+          <ellipse cx="0" cy="0" rx="14" ry="8" fill="#1a3a1a" stroke="#00ff88" strokeWidth="2" />
+          <ellipse cx="16" cy="0" rx="6" ry="4" fill="#ff6600" opacity="0.7">
+            <animate attributeName="opacity" values="0.4;0.9;0.4" dur="0.3s" repeatCount="indefinite" />
+          </ellipse>
+          <text x="0" y="-14" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">ENG 2</text>
+        </g>
+        <polygon points="-5,48 5,48 0,62" fill="#1a1a1a" stroke="#333" />
+      </g>
+      {/* Yaw indicator */}
+      <rect x="10" y="10" width="140" height="25" rx="4" fill={engineFailed && !corrected ? '#3a1a1a' : corrected ? '#1a3a1a' : '#1a1a1a'} stroke={engineFailed && !corrected ? '#ff4444' : corrected ? '#00ff88' : '#333'} />
+      <text x="80" y="27" textAnchor="middle" fill={engineFailed && !corrected ? '#ff4444' : corrected ? '#00ff88' : '#888'} fontSize="10" fontFamily="monospace" fontWeight="bold">
+        {!engineFailed ? 'NORMAL FLIGHT' : corrected ? 'YAW CORRECTED' : '⚠ YAW — 偏航!'}
+      </text>
+      {/* Procedure steps */}
+      <g transform="translate(20, 190)">
+        <text x="0" y="0" fill="#00ff88" fontSize="9" fontFamily="monospace" fontWeight="bold">处置程序:</text>
+        <text x="0" y="14" fill={engineFailed ? '#ffaa00' : '#6a8a6a'} fontSize="8" fontFamily="monospace">{engineFailed ? '✓' : '○'} 保持飞机控制</text>
+        <text x="0" y="26" fill={phase > 50 ? '#ffaa00' : '#6a8a6a'} fontSize="8" fontFamily="monospace">{phase > 50 ? '✓' : '○'} 关闭故障引擎</text>
+        <text x="0" y="38" fill={corrected ? '#00ff88' : '#6a8a6a'} fontSize="8" fontFamily="monospace">{corrected ? '✓' : '○'} 修正偏航 + 调整推力</text>
+      </g>
+      {/* Asymmetric thrust arrows */}
+      {engineFailed && !corrected && (
+        <>
+          <line x1="250" y1="100" x2="280" y2="100" stroke="#ff4444" strokeWidth="2" markerEnd="url(#arrowRed)" />
+          <text x="290" y="104" fill="#ff4444" fontSize="8" fontFamily="monospace">偏航力</text>
+          <line x1="250" y1="120" x2="220" y2="120" stroke="#00ff88" strokeWidth="2" />
+          <text x="200" y="135" fill="#00ff88" fontSize="8" fontFamily="monospace">修正力</text>
+        </>
+      )}
+    </svg>
+  );
+}
+
+function EmergencyStallAnimation() {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setPhase(p => (p + 1) % 200), 50);
+    return () => clearInterval(interval);
+  }, []);
+  const isStalled = phase > 20 && phase < 100;
+  const recovering = phase >= 100;
+  const pitch = isStalled ? 15 - (phase - 20) * 0.05 : recovering ? Math.max(-5, 10 - (phase - 100) * 0.2) : 15;
+  const speed = isStalled ? Math.max(80, 130 - (phase - 20) * 0.6) : recovering ? 80 + (phase - 100) * 1.2 : 130;
+  const altitude = isStalled ? 8000 - (phase - 20) * 15 : recovering ? Math.max(5000, 6800 - (phase - 100) * 5) : 8000;
+  const buffet = isStalled ? (Math.random() - 0.5) * 3 : 0;
+  return (
+    <svg viewBox="0 0 400 240" className="w-full h-full">
+      <defs>
+        <linearGradient id="stallSky" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#1a3a5c" />
+          <stop offset="100%" stopColor="#4a7ba8" />
+        </linearGradient>
+        <linearGradient id="stallGround" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#6a5a20" />
+          <stop offset="100%" stopColor="#3a2a08" />
+        </linearGradient>
+      </defs>
+      <g transform={`rotate(${buffet}, 200, 120)`}>
+        <rect width="400" height="240" fill="url(#stallSky)" />
+        <rect x="0" y={120 + pitch * 2} width="400" height={120 - pitch * 2} fill="url(#stallGround)" />
+        <line x1="0" y1={120 + pitch * 2} x2="400" y2={120 + pitch * 2} stroke="white" strokeWidth="1.5" opacity="0.5" />
+      </g>
+      {/* Aircraft symbol */}
+      <g transform={`translate(200, 120) rotate(${-pitch + buffet})`}>
+        <rect x="-35" y="-3" width="25" height="6" fill="#ffcc00" />
+        <rect x="10" y="-3" width="25" height="6" fill="#ffcc00" />
+        <circle cx="0" cy="0" r="5" fill="none" stroke="#ffcc00" strokeWidth="2" />
+      </g>
+      {/* Stall warning */}
+      {isStalled && (
+        <rect x="120" y="5" width="160" height="28" rx="4" fill="#ff0000" opacity="0.9">
+          <animate attributeName="opacity" values="0.9;0.4;0.9" dur="0.5s" repeatCount="indefinite" />
+        </rect>
+      )}
+      {isStalled && (
+        <text x="200" y="24" textAnchor="middle" fill="white" fontSize="14" fontFamily="monospace" fontWeight="bold">
+          ⚠ STALL WARNING
+        </text>
+      )}
+      {recovering && (
+        <>
+          <rect x="120" y="5" width="160" height="28" rx="4" fill="#1a3a1a" stroke="#00ff88" />
+          <text x="200" y="24" textAnchor="middle" fill="#00ff88" fontSize="12" fontFamily="monospace" fontWeight="bold">
+            RECOVERING 改出中
+          </text>
+        </>
+      )}
+      {/* Instruments */}
+      <rect x="10" y="180" width="120" height="50" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
+      <text x="70" y="196" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">AIRSPEED</text>
+      <text x="70" y="218" textAnchor="middle" fill={isStalled ? '#ff4444' : '#00ff88'} fontSize="18" fontFamily="monospace" fontWeight="bold">
+        {Math.round(speed)}
+      </text>
+      <rect x="140" y="180" width="120" height="50" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
+      <text x="200" y="196" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">PITCH</text>
+      <text x="200" y="218" textAnchor="middle" fill={pitch > 10 ? '#ffaa00' : '#00ff88'} fontSize="18" fontFamily="monospace" fontWeight="bold">
+        {pitch.toFixed(1)}°
+      </text>
+      <rect x="270" y="180" width="120" height="50" rx="4" fill="#0a0a0a" stroke="#1a3a1a" />
+      <text x="330" y="196" textAnchor="middle" fill="#6a8a6a" fontSize="8" fontFamily="monospace">ALTITUDE</text>
+      <text x="330" y="218" textAnchor="middle" fill={isStalled ? '#ffaa00' : '#00ff88'} fontSize="16" fontFamily="monospace" fontWeight="bold">
+        {Math.round(altitude)}
+      </text>
+      {/* Recovery instruction */}
+      {isStalled && (
+        <text x="200" y="170" textAnchor="middle" fill="#ffaa00" fontSize="10" fontFamily="monospace">
+          ↓ 推杆低头 + W 加油门！
+        </text>
+      )}
+    </svg>
+  );
+}
+
+function EmergencyWindshearAnimation() {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setPhase(p => (p + 1) % 180), 50);
+    return () => clearInterval(interval);
+  }, []);
+  const stage = phase < 40 ? 'headwind' : phase < 80 ? 'downdraft' : phase < 120 ? 'tailwind' : 'recovery';
+  const aircraftY = stage === 'downdraft' ? 130 + (phase - 40) * 0.5 : stage === 'tailwind' ? 150 - (phase - 80) * 0.3 : stage === 'recovery' ? 138 - (phase - 120) * 0.8 : 130;
+  return (
+    <svg viewBox="0 0 400 240" className="w-full h-full">
+      <defs>
+        <linearGradient id="wsSky" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#3a4a5a" />
+          <stop offset="100%" stopColor="#5a6a7a" />
+        </linearGradient>
+      </defs>
+      <rect width="400" height="240" fill="url(#wsSky)" />
+      {/* Storm clouds */}
+      {[0, 1, 2, 3].map(i => (
+        <ellipse key={i} cx={80 + i * 90} cy={30 + i * 10} rx={50 + i * 10} ry={20 + i * 5} fill="#2a2a3a" opacity="0.7" />
+      ))}
+      {/* Ground/runway */}
+      <rect x="0" y="190" width="400" height="50" fill="#3a3a3a" />
+      <line x1="0" y1="190" x2="400" y2="190" stroke="#666" />
+      {[...Array(6)].map((_, i) => (
+        <rect key={i} x={20 + i * 70} y="205" width="40" height="3" fill="white" opacity="0.3" />
+      ))}
+      {/* Wind arrows */}
+      {stage === 'headwind' && (
+        <>
+          {[0, 1, 2].map(i => (
+            <g key={i} transform={`translate(${50 + i * 120}, ${80 + i * 20})`}>
+              <line x1="0" y1="0" x2="40" y2="0" stroke="#00ff88" strokeWidth="2" />
+              <polygon points="40,0 32,-5 32,5" fill="#00ff88" />
+              <animate attributeName="opacity" values="0.3;1;0.3" dur="0.5s" repeatCount="indefinite" />
+            </g>
+          ))}
+          <text x="200" y="170" textAnchor="middle" fill="#00ff88" fontSize="11" fontFamily="monospace" fontWeight="bold">逆风增强 HEADWIND</text>
+        </>
+      )}
+      {stage === 'downdraft' && (
+        <>
+          {[0, 1, 2, 3].map(i => (
+            <g key={i} transform={`translate(${60 + i * 90}, ${50 + i * 10})`}>
+              <line x1="0" y1="0" x2="0" y2="40" stroke="#ff4444" strokeWidth="2" />
+              <polygon points="0,40 -5,32 5,32" fill="#ff4444" />
+              <animate attributeName="opacity" values="0.3;1;0.3" dur="0.4s" repeatCount="indefinite" />
+            </g>
+          ))}
+          <text x="200" y="170" textAnchor="middle" fill="#ff4444" fontSize="11" fontFamily="monospace" fontWeight="bold">下沉气流 DOWNDRAFT!</text>
+        </>
+      )}
+      {stage === 'tailwind' && (
+        <>
+          {[0, 1, 2].map(i => (
+            <g key={i} transform={`translate(${80 + i * 100}, ${90 + i * 15})`}>
+              <line x1="40" y1="0" x2="0" y2="0" stroke="#ffaa00" strokeWidth="2" />
+              <polygon points="0,0 8,-5 8,5" fill="#ffaa00" />
+              <animate attributeName="opacity" values="0.3;1;0.3" dur="0.6s" repeatCount="indefinite" />
+            </g>
+          ))}
+          <text x="200" y="170" textAnchor="middle" fill="#ffaa00" fontSize="11" fontFamily="monospace" fontWeight="bold">顺风增强 TAILWIND!</text>
+        </>
+      )}
+      {stage === 'recovery' && (
+        <text x="200" y="170" textAnchor="middle" fill="#00ff88" fontSize="11" fontFamily="monospace" fontWeight="bold">改出成功 RECOVERY</text>
+      )}
+      {/* Aircraft */}
+      <g transform={`translate(200, ${aircraftY})`}>
+        <ellipse cx="0" cy="0" rx="25" ry="5" fill="#c0c8d0" />
+        <polygon points="-8,-3 -30,-14 -26,-12 -5,-2" fill="#a0a8b0" />
+        <polygon points="8,-3 30,-14 26,-12 5,-2" fill="#a0a8b0" />
+        <polygon points="-22,-2 -28,-10 -25,-8 -20,-2" fill="#a0a8b0" />
+        {/* Engine glow - always TOGA */}
+        <ellipse cx="-18" cy="3" rx="5" ry="3" fill="#ff6600" opacity="0.8">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="0.2s" repeatCount="indefinite" />
+        </ellipse>
+        <ellipse cx="18" cy="3" rx="5" ry="3" fill="#ff6600" opacity="0.8">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="0.2s" repeatCount="indefinite" />
+        </ellipse>
+      </g>
+      {/* Warning */}
+      {stage !== 'recovery' && (
+        <>
+          <rect x="100" y="5" width="200" height="25" rx="4" fill="#ff0000" opacity="0.8">
+            <animate attributeName="opacity" values="0.8;0.3;0.8" dur="0.5s" repeatCount="indefinite" />
+          </rect>
+          <text x="200" y="22" textAnchor="middle" fill="white" fontSize="12" fontFamily="monospace" fontWeight="bold">
+            WIND SHEAR — TOGA!
+          </text>
+        </>
+      )}
+    </svg>
+  );
+}
+
 function AnimationRenderer({ type }: { type: TutorialStep['animation'] }) {
   switch (type) {
     case 'welcome': return <WelcomeAnimation />;
@@ -811,6 +1096,9 @@ function AnimationRenderer({ type }: { type: TutorialStep['animation'] }) {
     case 'autothrottle': return <AutothrottleAnimation />;
     case 'reverse': return <ReverseAnimation />;
     case 'ground': return <GroundAnimation />;
+    case 'emergency_engine': return <EmergencyEngineAnimation />;
+    case 'emergency_stall': return <EmergencyStallAnimation />;
+    case 'emergency_windshear': return <EmergencyWindshearAnimation />;
     case 'ready': return <ReadyAnimation />;
     default: return null;
   }
@@ -831,6 +1119,8 @@ export default function TutorialPage() {
       setCompletedSteps([...completedSteps, currentStep]);
       setCurrentStep(currentStep + 1);
     } else {
+      // Set takeoff-ready state for flight sim
+      sessionStorage.setItem('startTakeoff', 'true');
       router.push('/flight-sim-main');
     }
   };
