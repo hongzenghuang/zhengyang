@@ -27,34 +27,33 @@ function getDensityRatio(altitude: number): number {
 function getLiftCoefficient(
   pitch: number, flapsAngle: number, airspeed: number, scenario: FlightScenario
 ): number {
-  // Completely redesigned lift model for realistic performance
-  // Key insight: lift coefficient should be higher at cruise to maintain altitude
-  // At pitch=2, flaps=0, 250kts: CL≈1.2 (cruise)
-  // At pitch=10, flaps=15, 160kts: CL≈2.2 (takeoff)
+  // Corrected lift model based on realistic aerodynamics
+  // At cruise (pitch=2°, flaps=0°, 250kts): CL≈0.36 (Lift=Weight)
+  // At takeoff (pitch=10°, flaps=15°, 160kts): CL≈1.8 (good rotation)
   
-  const baseCL = 0.8; // Higher base for cruise
-  const pitchCL = pitch * 0.12; // Pitch effect
-  const flapsCL = flapsAngle * 0.06; // Flaps effect
+  const baseCL = 0.20;
+  const pitchCL = pitch * 0.08;
+  const flapsCL = flapsAngle * 0.053;
   
   // Icing reduces lift by up to 30%
   const icingPenalty = scenario === 'icing' ? 0.7 : 1.0;
   
   // Stall model: below stall speed, lift degrades
-  const stallSpeed = 110 - flapsAngle * 1.2;
+  const stallSpeed = 110 - flapsAngle * 1.0;
   const stallFactor = airspeed < stallSpeed ? Math.max(0.3, airspeed / stallSpeed) : 1;
   
-  return Math.max(0, Math.min(3.0, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
+  return Math.max(0, Math.min(2.5, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
 }
 
 function getDragCoefficient(
   liftCoeff: number, flapsAngle: number, gearDown: boolean, scenario: FlightScenario
 ): number {
-  const baseCD = 0.020;
-  const inducedDrag = 0.040 * liftCoeff * liftCoeff;
-  const flapsDrag = flapsAngle * 0.003;
-  const gearDrag = gearDown ? 0.015 : 0;
+  const baseCD = 0.018; // Reduced base drag
+  const inducedDrag = 0.035 * liftCoeff * liftCoeff; // Reduced induced drag
+  const flapsDrag = flapsAngle * 0.0025;
+  const gearDrag = gearDown ? 0.012 : 0;
   // Icing adds extra drag
-  const icingDrag = scenario === 'icing' ? 0.015 : 0;
+  const icingDrag = scenario === 'icing' ? 0.012 : 0;
   return baseCD + inducedDrag + flapsDrag + gearDrag + icingDrag;
 }
 
@@ -216,11 +215,11 @@ export function updateFlightPhysics(
     yawFromAsymmetry = thrustDiff / MAX_THRUST_PER_ENGINE * 2; // degrees per frame
   }
 
-  // Forward forces - minimal gravity effect for stable climb
+  // Forward forces - proper thrust and drag balance
   const thrustForward = totalThrust * Math.cos(pitchRad);
-  // Gravity component along flight path - very small to prevent excessive deceleration
-  const gravityForward = weight * Math.sin(pitchRad) * 0.15;
-  const groundFriction = isOnGround ? weight * 0.02 : 0;
+  // Gravity component along flight path - minimal effect
+  const gravityForward = weight * Math.sin(pitchRad) * 0.1;
+  const groundFriction = isOnGround ? weight * 0.015 : 0;
   const netForceForward = thrustForward - drag - gravityForward - groundFriction - reverseForce;
   const accelerationForward = netForceForward / MASS;
 
@@ -230,7 +229,7 @@ export function updateFlightPhysics(
   const newIAS = newTAS * Math.sqrt(Math.max(0.01, densityRatio));
   newState.airspeed = Math.max(0, newIAS);
 
-  // Vertical forces - stable and responsive climb
+  // Vertical forces - stable and responsive
   if (isOnGround) {
     newState.verticalSpeed = 0;
     newState.altitude = 0;
@@ -238,18 +237,18 @@ export function updateFlightPhysics(
     // Lift acts perpendicular to wings
     const liftVertical = lift * Math.cos(rollRad);
     // Thrust contributes to vertical force when pitched up
-    const thrustVertical = totalThrust * Math.sin(pitchRad) * 0.3;
+    const thrustVertical = totalThrust * Math.sin(pitchRad) * 0.25;
     const gravityVertical = weight;
     const netForceVertical = liftVertical + thrustVertical - gravityVertical;
     const verticalAcceleration = netForceVertical / MASS;
 
     // Responsive vertical speed changes
-    const vsChange = verticalAcceleration * 70 * dt;
+    const vsChange = verticalAcceleration * 65 * dt;
     newState.verticalSpeed = state.verticalSpeed + vsChange;
 
     // Gentle damping to stabilize
-    if (Math.abs(state.verticalSpeed) < 10 && Math.abs(verticalAcceleration) < 0.05) {
-      newState.verticalSpeed = newState.verticalSpeed * 0.97;
+    if (Math.abs(state.verticalSpeed) < 15 && Math.abs(verticalAcceleration) < 0.08) {
+      newState.verticalSpeed = newState.verticalSpeed * 0.96;
     }
 
     newState.verticalSpeed = Math.max(-6000, Math.min(6000, newState.verticalSpeed));
