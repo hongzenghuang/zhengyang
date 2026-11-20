@@ -84,16 +84,16 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
         updates.throttle = Math.max(0, prev.throttle - 2);
         break;
       case 'PITCH_UP':
-        updates.pitch = Math.min(20, prev.pitch + 2);
+        updates.pitch = Math.min(25, prev.pitch + 3);
         break;
       case 'PITCH_DOWN':
-        updates.pitch = Math.max(-15, prev.pitch - 2);
+        updates.pitch = Math.max(-15, prev.pitch - 3);
         break;
       case 'ROLL_LEFT':
-        updates.roll = Math.max(-45, prev.roll - 4);
+        updates.roll = Math.max(-60, prev.roll - 5);
         break;
       case 'ROLL_RIGHT':
-        updates.roll = Math.min(45, prev.roll + 4);
+        updates.roll = Math.min(60, prev.roll + 5);
         break;
       case 'TOGGLE_GEAR':
         updates.gearDown = !prev.gearDown;

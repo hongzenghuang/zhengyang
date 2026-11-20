@@ -174,10 +174,11 @@ export function updateFlightPhysics(
     newState.reverseThrust = false;
   }
 
-  // Ground roll limits - aircraft can't roll much on ground
+  // Ground roll limits - allow pitch up for rotation
   if (isOnGround) {
     newState.roll = Math.max(-5, Math.min(5, state.roll));
-    newState.pitch = Math.max(-2, Math.min(15, state.pitch));
+    // Allow pitch up to 20° for takeoff rotation
+    newState.pitch = Math.max(-5, Math.min(20, state.pitch));
   }
 
   // Reverse thrust (only on ground, speed > 5 kts)
@@ -268,15 +269,15 @@ export function updateFlightPhysics(
   const newTAS2 = newState.airspeed / Math.sqrt(Math.max(0.01, densityRatio));
   newState.groundSpeed = newTAS2 * 0.98;
 
-  // Gentle stability in air only - much weaker to allow manual control
+  // Very gentle stability - almost no automatic correction
+  // Pilot has full manual control
   if (!isOnGround) {
-    // Only apply very gentle return to neutral when no input
-    // This allows pilot to maintain attitude manually
-    if (Math.abs(state.pitch) > 5) {
-      newState.pitch = state.pitch * (1 - dt * 0.005); // Very weak damping
+    // Extremely weak damping only at extreme attitudes
+    if (Math.abs(state.pitch) > 15) {
+      newState.pitch = state.pitch * (1 - dt * 0.002);
     }
-    if (Math.abs(state.roll) > 5) {
-      newState.roll = state.roll * (1 - dt * 0.008); // Very weak damping
+    if (Math.abs(state.roll) > 30) {
+      newState.roll = state.roll * (1 - dt * 0.003);
     }
   }
 
