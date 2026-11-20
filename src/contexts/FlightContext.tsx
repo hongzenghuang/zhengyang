@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { AircraftState, ControlAction } from '@/lib/types';
-import { initialAircraftState, updateFlightPhysics } from '@/lib/flight-physics';
+import { AircraftState, ControlAction, FlightScenario } from '@/lib/types';
+import { initialAircraftState, updateFlightPhysics, getScenarioInitialState } from '@/lib/flight-physics';
 import { applyAutopilot } from '@/lib/autopilot';
 import { applyAutothrottle } from '@/lib/autothrottle';
 import { audioSystem } from '@/lib/audio';
@@ -17,6 +17,7 @@ interface FlightContextType {
   adjustTargetHeading: (delta: number) => void;
   adjustTargetAltitude: (delta: number) => void;
   adjustTargetAirspeed: (delta: number) => void;
+  setScenario: (scenario: FlightScenario) => void;
 }
 
 const FlightContext = createContext<FlightContextType | undefined>(undefined);
@@ -62,7 +63,6 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
   const dispatch = useCallback((action: ControlAction) => {
     audioSystem.playClick();
     
-    // CRITICAL: Update stateRef directly so physics engine sees changes immediately
     const prev = stateRef.current;
     const updates: Partial<AircraftState> = {};
 
@@ -109,11 +109,9 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
         updates.engine2Enabled = !prev.engine2Enabled;
         break;
       case 'TOGGLE_REVERSE_THRUST':
-        // Only allow reverse thrust on ground with throttle at idle
         if (prev.altitude <= 0 && prev.gearDown) {
           updates.reverseThrust = !prev.reverseThrust;
           if (!prev.reverseThrust) {
-            // Engaging reverse: force throttle to 0
             updates.throttle = 0;
           }
         }
@@ -134,14 +132,14 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
         }
         break;
       }
+      case 'SET_SCENARIO':
+        break;
     }
 
-    // Apply updates to both stateRef and React state
     stateRef.current = { ...prev, ...updates };
     setState(s => ({ ...s, ...updates }));
   }, []);
 
-  // Direct throttle setter for slider
   const setThrottle = useCallback((value: number) => {
     const clamped = Math.max(0, Math.min(100, value));
     stateRef.current = { ...stateRef.current, throttle: clamped };
@@ -172,6 +170,13 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
     setState(prev => ({ ...prev, targetAirspeed: Math.max(100, Math.min(350, prev.targetAirspeed + delta)) }));
   }, []);
 
+  const setScenario = useCallback((scenario: FlightScenario) => {
+    const newState = getScenarioInitialState(scenario);
+    stateRef.current = newState;
+    setState(newState);
+    lastTimeRef.current = Date.now();
+  }, []);
+
   return (
     <FlightContext.Provider value={{ 
       state, 
@@ -182,7 +187,8 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
       setTargetAirspeed,
       adjustTargetHeading,
       adjustTargetAltitude,
-      adjustTargetAirspeed
+      adjustTargetAirspeed,
+      setScenario,
     }}>
       {children}
     </FlightContext.Provider>

@@ -30,7 +30,37 @@ export interface AircraftState {
   targetAltitude: number;  // Target altitude in feet
   targetAirspeed: number;  // Target airspeed in knots
   verticalSpeedTarget: number; // Target vertical speed in ft/min
+
+  // Scenario
+  activeScenario: FlightScenario;
+  scenarioTimer: number;   // Seconds since scenario started
+  scenarioMessage: string; // Alert message for current scenario
 }
+
+// Flight scenarios
+export type FlightScenario = 
+  | 'normal'
+  | 'engine_failure'
+  | 'stall'
+  | 'wind_shear'
+  | 'bird_strike'
+  | 'icing';
+
+export interface ScenarioInfo {
+  id: FlightScenario;
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export const SCENARIOS: ScenarioInfo[] = [
+  { id: 'normal', name: '正常飞行', description: '标准起飞和巡航', icon: '✈' },
+  { id: 'engine_failure', name: '引擎故障', description: '起飞后单引擎失效', icon: '⚠' },
+  { id: 'stall', name: '失速改出', description: '高空低速失速状态', icon: '↻' },
+  { id: 'wind_shear', name: '风切变', description: '进近时遭遇风切变', icon: '🌪' },
+  { id: 'bird_strike', name: '鸟击', description: '起飞阶段鸟击引擎', icon: '🐦' },
+  { id: 'icing', name: '结冰条件', description: '机翼结冰影响升力', icon: '❄' },
+];
 
 // Control input types
 export type ControlAction = 
@@ -47,7 +77,8 @@ export type ControlAction =
   | 'TOGGLE_ENGINE_2'
   | 'TOGGLE_REVERSE_THRUST'
   | 'FLAPS_UP'
-  | 'FLAPS_DOWN';
+  | 'FLAPS_DOWN'
+  | 'SET_SCENARIO';
 
 // Tutorial step
 export interface TutorialStep {

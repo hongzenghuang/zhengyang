@@ -1,15 +1,14 @@
-import { AircraftState } from './types';
+import { AircraftState, FlightScenario } from './types';
 
 // Physics constants
 const GRAVITY = 32.174; // ft/s^2
 const AIR_DENSITY_SEA_LEVEL = 0.002377; // slug/ft^3
 const WING_AREA = 4605; // ft^2 (B777-9)
-const CRUISE_WEIGHT = 480000; // lbf (typical cruise weight, not max takeoff)
+const CRUISE_WEIGHT = 350000; // lbf (lighter for better single-engine performance)
 const MASS = CRUISE_WEIGHT / GRAVITY; // slug
 const MAX_THRUST_PER_ENGINE = 115000; // lbf per engine (GE9X)
-const REVERSE_THRUST_FACTOR = 0.4; // Reverse thrust = 40% of max forward thrust
+const REVERSE_THRUST_FACTOR = 0.4;
 
-// Calculate air density based on altitude (ISA model)
 function getAirDensity(altitude: number): number {
   const altitudeFt = Math.max(0, altitude);
   const tempRatio = 1 - (altitudeFt * 0.000006875);
@@ -18,7 +17,6 @@ function getAirDensity(altitude: number): number {
   return AIR_DENSITY_SEA_LEVEL * densityRatio;
 }
 
-// Get density ratio for TAS calculation
 function getDensityRatio(altitude: number): number {
   const altitudeFt = Math.max(0, altitude);
   const tempRatio = 1 - (altitudeFt * 0.000006875);
@@ -26,28 +24,117 @@ function getDensityRatio(altitude: number): number {
   return pressureRatio / tempRatio;
 }
 
-// Calculate lift coefficient
-function getLiftCoefficient(pitch: number, flapsAngle: number, airspeed: number): number {
-  const baseCL = 0.1;
-  const pitchCL = pitch * 0.12;
-  const flapsCL = flapsAngle * 0.012;
+function getLiftCoefficient(
+  pitch: number, flapsAngle: number, airspeed: number, scenario: FlightScenario
+): number {
+  const baseCL = 0.15;
+  const pitchCL = pitch * 0.15;
+  const flapsCL = flapsAngle * 0.015;
   
-  const stallSpeed = 120 + flapsAngle * 1.5;
-  const stallFactor = airspeed < stallSpeed ? Math.max(0.2, airspeed / stallSpeed) : 1;
+  // Icing reduces lift by up to 30%
+  const icingPenalty = scenario === 'icing' ? 0.7 : 1.0;
   
-  return Math.max(-0.3, Math.min(2.0, (baseCL + pitchCL + flapsCL) * stallFactor));
+  const stallSpeed = 110 + flapsAngle * 1.2;
+  const stallFactor = airspeed < stallSpeed ? Math.max(0.3, airspeed / stallSpeed) : 1;
+  
+  return Math.max(-0.3, Math.min(2.5, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
 }
 
-// Calculate drag coefficient
-function getDragCoefficient(liftCoeff: number, flapsAngle: number, gearDown: boolean): number {
-  const baseCD = 0.02;
-  const inducedDrag = 0.04 * liftCoeff * liftCoeff;
-  const flapsDrag = flapsAngle * 0.003;
-  const gearDrag = gearDown ? 0.015 : 0;
-  return baseCD + inducedDrag + flapsDrag + gearDrag;
+function getDragCoefficient(
+  liftCoeff: number, flapsAngle: number, gearDown: boolean, scenario: FlightScenario
+): number {
+  const baseCD = 0.018;
+  const inducedDrag = 0.035 * liftCoeff * liftCoeff;
+  const flapsDrag = flapsAngle * 0.0025;
+  const gearDrag = gearDown ? 0.012 : 0;
+  // Icing adds extra drag
+  const icingDrag = scenario === 'icing' ? 0.015 : 0;
+  return baseCD + inducedDrag + flapsDrag + gearDrag + icingDrag;
 }
 
-// Main physics update function
+// Scenario-specific effects
+function applyScenarioEffects(state: AircraftState, newState: AircraftState, dt: number): void {
+  const scenario = state.activeScenario;
+  const timer = state.scenarioTimer;
+
+  switch (scenario) {
+    case 'engine_failure':
+      // Engine 2 fails after 3 seconds
+      if (timer > 3 && state.engine2Enabled) {
+        newState.engine2Enabled = false;
+        newState.scenarioMessage = '⚠ ENGINE 2 FAILURE - 单发失效，保持控制';
+      }
+      break;
+
+    case 'stall':
+      // Stall warning when airspeed is low
+      if (state.airspeed < 130) {
+        newState.scenarioMessage = '⚠ STALL WARNING - 推杆低头加速改出！';
+        // Add nose-down tendency (stall buffet)
+        if (state.pitch > 0) {
+          newState.pitch = state.pitch - dt * 0.8;
+        }
+        // Random roll disturbance (wing drop)
+        newState.roll = state.roll + (Math.random() - 0.5) * dt * 8;
+      } else {
+        newState.scenarioMessage = '速度恢复，改出成功';
+      }
+      break;
+
+    case 'wind_shear': {
+      // Wind shear: sudden changes in wind every few seconds
+      const shearCycle = Math.floor(timer / 4);
+      const shearPhase = timer % 4;
+      
+      if (shearPhase < 1) {
+        // Headwind burst - sudden airspeed increase
+        newState.airspeed = state.airspeed + dt * 15;
+        newState.verticalSpeed = state.verticalSpeed + dt * 800;
+        newState.scenarioMessage = '🌪 WIND SHEAR - 逆风增强！';
+      } else if (shearPhase < 2) {
+        // Downdraft
+        newState.verticalSpeed = state.verticalSpeed - dt * 1200;
+        newState.scenarioMessage = '🌪 WIND SHEAR - 下沉气流！';
+      } else if (shearPhase < 3) {
+        // Tailwind burst - sudden airspeed decrease
+        newState.airspeed = Math.max(0, state.airspeed - dt * 12);
+        newState.scenarioMessage = '🌪 WIND SHEAR - 顺风增强，空速下降！';
+      } else {
+        // Recovery
+        newState.scenarioMessage = shearCycle > 2 ? '风切变减弱，恢复控制' : '准备下一波风切变...';
+      }
+      // Random roll disturbance
+      newState.roll = state.roll + (Math.random() - 0.5) * dt * 5;
+      break;
+    }
+
+    case 'bird_strike':
+      // Bird strike at 5 seconds - damages engine 1
+      if (timer > 5 && timer < 5.5 && state.engine1Enabled) {
+        newState.engine1Enabled = false;
+        newState.scenarioMessage = '🐦 BIRD STRIKE - 引擎1受损！检查推力';
+      }
+      // Vibration effect for first 8 seconds
+      if (timer > 5 && timer < 8) {
+        newState.roll = state.roll + (Math.random() - 0.5) * dt * 10;
+        newState.pitch = state.pitch + (Math.random() - 0.5) * dt * 3;
+      }
+      break;
+
+    case 'icing':
+      newState.scenarioMessage = '❄ ICING CONDITIONS - 升力下降，阻力增加';
+      // Gradual performance degradation
+      if (timer > 10) {
+        newState.scenarioMessage = '❄ 严重结冰 - 尽快下降高度！';
+      }
+      break;
+
+    default:
+      newState.scenarioMessage = '';
+      break;
+  }
+}
+
 export function updateFlightPhysics(
   state: AircraftState,
   deltaTime: number
@@ -55,22 +142,24 @@ export function updateFlightPhysics(
   const newState = { ...state };
   const dt = Math.min(deltaTime, 0.05);
 
-  // Update N1 based on throttle
-  const targetN1 = state.throttle * 0.85 + 15;
-  const n1Rate = 3;
-  newState.engine1N1 = state.engine1Enabled 
-    ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, n1Rate * dt)
-    : Math.max(0, state.engine1N1 - dt * 10);
-  newState.engine2N1 = state.engine2Enabled 
-    ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, n1Rate * dt)
-    : Math.max(0, state.engine2N1 - dt * 10);
+  // Update scenario timer
+  if (state.activeScenario !== 'normal') {
+    newState.scenarioTimer = state.scenarioTimer + dt;
+  }
 
-  // Calculate thrust based on N1
-  const n1Norm1 = Math.max(0, (newState.engine1N1 - 15) / 85);
-  const n1Norm2 = Math.max(0, (newState.engine2N1 - 15) / 85);
-  const engine1Thrust = state.engine1Enabled ? n1Norm1 * MAX_THRUST_PER_ENGINE : 0;
-  const engine2Thrust = state.engine2Enabled ? n1Norm2 * MAX_THRUST_PER_ENGINE : 0;
-  const totalThrust = engine1Thrust + engine2Thrust;
+  // N1 response - fast spool up
+  const targetN1 = state.throttle * 0.85 + 15;
+  newState.engine1N1 = state.engine1Enabled 
+    ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, 8 * dt)
+    : Math.max(0, state.engine1N1 - dt * 15);
+  newState.engine2N1 = state.engine2Enabled 
+    ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, 8 * dt)
+    : Math.max(0, state.engine2N1 - dt * 15);
+
+  // Thrust calculation - direct from N1
+  const n1Thrust1 = state.engine1Enabled ? (newState.engine1N1 / 100) * MAX_THRUST_PER_ENGINE : 0;
+  const n1Thrust2 = state.engine2Enabled ? (newState.engine2N1 / 100) * MAX_THRUST_PER_ENGINE : 0;
+  const totalThrust = n1Thrust1 + n1Thrust2;
 
   // Ground detection
   const isOnGround = state.altitude <= 0 && state.gearDown;
@@ -80,42 +169,54 @@ export function updateFlightPhysics(
     newState.reverseThrust = false;
   }
 
-  // Calculate reverse thrust (only on ground)
+  // Ground roll limits - aircraft can't roll much on ground
+  if (isOnGround) {
+    newState.roll = Math.max(-5, Math.min(5, state.roll));
+    newState.pitch = Math.max(-2, Math.min(15, state.pitch));
+  }
+
+  // Reverse thrust (only on ground, speed > 5 kts)
   let reverseForce = 0;
   if (state.reverseThrust && isOnGround && state.airspeed > 5) {
-    // Reverse thrust proportional to speed (more effective at higher speeds)
-    const reverseFactor = Math.min(1, state.airspeed / 100);
+    const reverseFactor = Math.min(1, state.airspeed / 80);
     reverseForce = totalThrust * REVERSE_THRUST_FACTOR * reverseFactor;
   }
 
-  // Convert IAS to TAS for aerodynamic calculations
+  // IAS to TAS
   const densityRatio = getDensityRatio(state.altitude);
   const tas = state.airspeed / Math.sqrt(Math.max(0.01, densityRatio));
   const velocityFtS = tas * 1.68781;
 
-  // Calculate aerodynamic forces
+  // Aerodynamic forces (with scenario effects)
   const airDensity = getAirDensity(state.altitude);
-  const cl = getLiftCoefficient(state.pitch, state.flapsAngle, state.airspeed);
-  const cd = getDragCoefficient(cl, state.flapsAngle, state.gearDown);
+  const cl = getLiftCoefficient(state.pitch, state.flapsAngle, state.airspeed, state.activeScenario);
+  const cd = getDragCoefficient(cl, state.flapsAngle, state.gearDown, state.activeScenario);
 
   const dynamicPressure = 0.5 * airDensity * velocityFtS * velocityFtS;
   const lift = dynamicPressure * WING_AREA * cl;
   const drag = dynamicPressure * WING_AREA * cd;
   const weight = CRUISE_WEIGHT;
 
-  // Calculate accelerations
   const pitchRad = (state.pitch * Math.PI) / 180;
   const rollRad = (state.roll * Math.PI) / 180;
 
-  // Forward acceleration (thrust - drag - gravity - friction - reverse)
+  // Asymmetric thrust (yaw effect from single engine)
+  const enginesActive = (state.engine1Enabled ? 1 : 0) + (state.engine2Enabled ? 1 : 0);
+  let yawFromAsymmetry = 0;
+  if (enginesActive === 1 && !isOnGround) {
+    // Single engine causes yaw toward dead engine
+    const thrustDiff = n1Thrust1 - n1Thrust2;
+    yawFromAsymmetry = thrustDiff / MAX_THRUST_PER_ENGINE * 2; // degrees per frame
+  }
+
+  // Forward forces
   const thrustForward = totalThrust * Math.cos(pitchRad);
-  const dragForce = drag;
   const gravityForward = weight * Math.sin(pitchRad);
-  const groundFriction = isOnGround ? weight * 0.025 : 0;
-  const netForceForward = thrustForward - dragForce - gravityForward - groundFriction - reverseForce;
+  const groundFriction = isOnGround ? weight * 0.02 : 0;
+  const netForceForward = thrustForward - drag - gravityForward - groundFriction - reverseForce;
   const accelerationForward = netForceForward / MASS;
 
-  // Update airspeed (IAS)
+  // Update airspeed
   const newTASFtS = Math.max(0, velocityFtS + accelerationForward * dt);
   const newTAS = newTASFtS / 1.68781;
   const newIAS = newTAS * Math.sqrt(Math.max(0.01, densityRatio));
@@ -134,8 +235,9 @@ export function updateFlightPhysics(
     const vsChange = verticalAcceleration * 60 * dt;
     newState.verticalSpeed = state.verticalSpeed + vsChange;
 
-    if (Math.abs(state.verticalSpeed) < 5 && Math.abs(verticalAcceleration) < 0.1) {
-      newState.verticalSpeed = newState.verticalSpeed * 0.95;
+    // Light damping only near zero
+    if (Math.abs(state.verticalSpeed) < 10 && Math.abs(verticalAcceleration) < 0.05) {
+      newState.verticalSpeed = newState.verticalSpeed * 0.98;
     }
 
     newState.verticalSpeed = Math.max(-6000, Math.min(6000, newState.verticalSpeed));
@@ -150,29 +252,30 @@ export function updateFlightPhysics(
     }
   }
 
-  // Update heading based on roll
-  const turnRate = isOnGround ? state.roll * 0.01 : state.roll * 0.03;
-  newState.heading = (state.heading + turnRate * dt + 360) % 360;
+  // Heading from roll + asymmetric thrust yaw
+  const turnRate = isOnGround ? state.roll * 0.005 : state.roll * 0.03;
+  newState.heading = (state.heading + (turnRate + yawFromAsymmetry) * dt + 360) % 360;
 
-  // Ground speed approximation
+  // Ground speed
   const newTAS2 = newState.airspeed / Math.sqrt(Math.max(0.01, densityRatio));
   newState.groundSpeed = newTAS2 * 0.98;
 
-  // Pitch damping - only when no user input (gentle return to trim)
-  // Reduced damping to allow user control
-  if (Math.abs(state.pitch) > 0.5) {
-    newState.pitch = state.pitch * (1 - dt * 0.05);
+  // Gentle stability in air only (no ground damping)
+  if (!isOnGround) {
+    if (Math.abs(state.pitch) > 2) {
+      newState.pitch = state.pitch * (1 - dt * 0.02);
+    }
+    if (Math.abs(state.roll) > 2) {
+      newState.roll = state.roll * (1 - dt * 0.03);
+    }
   }
 
-  // Roll damping - only when no user input (gentle return to wings level)
-  if (Math.abs(state.roll) > 0.5) {
-    newState.roll = state.roll * (1 - dt * 0.1);
-  }
+  // Apply scenario effects
+  applyScenarioEffects(state, newState, dt);
 
   return newState;
 }
 
-// Initial aircraft state - stopped on ground
 export const initialAircraftState: AircraftState = {
   altitude: 0,
   pitch: 0,
@@ -195,4 +298,92 @@ export const initialAircraftState: AircraftState = {
   targetAltitude: 10000,
   targetAirspeed: 250,
   verticalSpeedTarget: 0,
+  activeScenario: 'normal',
+  scenarioTimer: 0,
+  scenarioMessage: '',
 };
+
+// Scenario-specific initial states
+export function getScenarioInitialState(scenario: FlightScenario): AircraftState {
+  const base = { ...initialAircraftState, activeScenario: scenario, scenarioTimer: 0, scenarioMessage: '' };
+
+  switch (scenario) {
+    case 'engine_failure':
+      return {
+        ...base,
+        altitude: 2000,
+        airspeed: 180,
+        pitch: 5,
+        heading: 270,
+        throttle: 85,
+        gearDown: false,
+        flapsAngle: 5,
+        targetAltitude: 10000,
+        targetAirspeed: 250,
+        scenarioMessage: '起飞爬升中... 等待引擎故障',
+      };
+
+    case 'stall':
+      return {
+        ...base,
+        altitude: 8000,
+        airspeed: 100,
+        pitch: 12,
+        heading: 180,
+        throttle: 20,
+        gearDown: false,
+        flapsAngle: 0,
+        targetAltitude: 8000,
+        targetAirspeed: 250,
+        scenarioMessage: '⚠ STALL WARNING - 推杆低头加速改出！',
+      };
+
+    case 'wind_shear':
+      return {
+        ...base,
+        altitude: 1500,
+        airspeed: 150,
+        pitch: -2,
+        heading: 360,
+        throttle: 60,
+        gearDown: true,
+        flapsAngle: 25,
+        targetAltitude: 0,
+        targetAirspeed: 140,
+        scenarioMessage: '进近中... 风切变预警',
+      };
+
+    case 'bird_strike':
+      return {
+        ...base,
+        altitude: 500,
+        airspeed: 160,
+        pitch: 8,
+        heading: 90,
+        throttle: 90,
+        gearDown: false,
+        flapsAngle: 15,
+        targetAltitude: 5000,
+        targetAirspeed: 250,
+        scenarioMessage: '起飞爬升中... 注意鸟群',
+      };
+
+    case 'icing':
+      return {
+        ...base,
+        altitude: 12000,
+        airspeed: 220,
+        pitch: 2,
+        heading: 270,
+        throttle: 70,
+        gearDown: false,
+        flapsAngle: 0,
+        targetAltitude: 12000,
+        targetAirspeed: 220,
+        scenarioMessage: '❄ 进入结冰区域',
+      };
+
+    default:
+      return base;
+  }
+}

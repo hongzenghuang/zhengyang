@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useFlight } from '@/contexts/FlightContext';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
+import { SCENARIOS, FlightScenario } from '@/lib/types';
 
 interface TrafficAircraft {
   id: number;
@@ -120,9 +121,11 @@ export default function FlightSimulatorPage() {
     setThrottle,
     adjustTargetHeading, 
     adjustTargetAltitude, 
-    adjustTargetAirspeed 
+    adjustTargetAirspeed,
+    setScenario,
   } = useFlight();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showScenarioPanel, setShowScenarioPanel] = useState(false);
   const cloudOffsetRef = useRef(0);
   const groundOffsetRef = useRef(0);
   const [cloudOffset, setCloudOffset] = useState(0);
@@ -170,6 +173,15 @@ export default function FlightSimulatorPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Smooth visual transforms to prevent shaking
+  const [smoothRoll, setSmoothRoll] = useState(0);
+  const [smoothPitch, setSmoothPitch] = useState(0);
+  useEffect(() => {
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    setSmoothRoll(prev => lerp(prev, state.roll, 0.3));
+    setSmoothPitch(prev => lerp(prev, state.pitch, 0.3));
+  }, [state.roll, state.pitch]);
+
   useEffect(() => {
     let animFrame: number;
     const animate = () => {
@@ -205,7 +217,7 @@ export default function FlightSimulatorPage() {
   };
 
   return (
-    <div className="h-screen bg-[#0a0a0a] text-white font-mono flex flex-col overflow-hidden select-none">
+    <div className="relative h-screen bg-[#0a0a0a] text-white font-mono flex flex-col overflow-hidden select-none">
       <style jsx global>{`
         .knob-btn {
           width: 26px; height: 26px;
@@ -282,6 +294,19 @@ export default function FlightSimulatorPage() {
         }
       `}</style>
 
+      {/* Scenario Alert Banner */}
+      {state.scenarioMessage && (
+        <div className={`flex-shrink-0 px-3 py-1 text-center text-xs font-bold tracking-wider border-b ${
+          state.activeScenario === 'normal' 
+            ? 'bg-green-900/30 text-green-400 border-green-800' 
+            : state.activeScenario === 'stall' || state.activeScenario === 'bird_strike'
+            ? 'bg-red-900/40 text-red-400 border-red-800 animate-pulse'
+            : 'bg-amber-900/40 text-amber-400 border-amber-800'
+        }`}>
+          {state.scenarioMessage}
+        </div>
+      )}
+
       {/* External View */}
       <div className="ext-view relative w-full h-32 flex-shrink-0 overflow-hidden" style={{ background: skyGradient }}>
         {state.altitude < 35000 && (
@@ -304,8 +329,9 @@ export default function FlightSimulatorPage() {
             style={{ 
               height: `${Math.min(50, groundOpacity * 50)}%`,
               opacity: groundOpacity,
-              transform: `rotate(${state.roll}deg)`,
-              transformOrigin: 'center bottom'
+              transform: `rotate(${smoothRoll}deg)`,
+              transformOrigin: 'center bottom',
+              transition: 'transform 0.05s linear'
             }}>
             <div className="absolute inset-0 bg-gradient-to-t from-[#2a4a1a] via-[#3a5a2a] to-[#4a6a3a]" />
             {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
@@ -316,7 +342,7 @@ export default function FlightSimulatorPage() {
         )}
 
         <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
-          style={{ bottom: `${50 + state.pitch * 1.5}%`, transform: `rotate(${state.roll}deg)`, transformOrigin: 'center' }} />
+          style={{ bottom: `${50 + smoothPitch * 1.5}%`, transform: `rotate(${smoothRoll}deg)`, transformOrigin: 'center', transition: 'transform 0.05s linear' }} />
         
         <div className="absolute top-2 left-3 flex gap-4 text-[10px]">
           <div className="flex flex-col items-center">
@@ -805,8 +831,39 @@ export default function FlightSimulatorPage() {
         </div>
       </div>
 
+      {/* Scenario Panel (floating) */}
+      {showScenarioPanel && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowScenarioPanel(false)}>
+          <div className="bg-[#111] border border-[#333] rounded-lg p-4 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-green-400 tracking-wider">特殊情况飞行</h3>
+              <button onClick={() => setShowScenarioPanel(false)} className="text-gray-500 hover:text-white text-lg">×</button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {SCENARIOS.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => { setScenario(s.id); setShowScenarioPanel(false); }}
+                  className={`p-3 rounded border text-left transition-all ${
+                    state.activeScenario === s.id 
+                      ? 'border-green-400 bg-green-400/10' 
+                      : 'border-[#333] bg-[#0a0a0a] hover:border-green-400/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{s.icon}</span>
+                    <span className="text-xs font-bold text-green-400">{s.name}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500">{s.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Keyboard shortcuts */}
-      <div className="flex-shrink-0 px-3 py-1.5 bg-[#111] border-t border-[#2a2a2a] text-[9px] text-gray-500 flex gap-3 flex-wrap">
+      <div className="flex-shrink-0 px-3 py-1.5 bg-[#111] border-t border-[#2a2a2a] text-[9px] text-gray-500 flex gap-3 flex-wrap items-center">
         <span className="text-gray-400">↑↓←→</span><span>姿态</span>
         <span className="text-gray-400">W/S</span><span>油门</span>
         <span className="text-gray-400">G</span><span>起落架</span>
@@ -815,6 +872,12 @@ export default function FlightSimulatorPage() {
         <span className="text-gray-400">T</span><span>自动油门</span>
         <span className="text-gray-400">1/2</span><span>引擎</span>
         <span className="text-gray-400">[/]</span><span>襟翼</span>
+        <button 
+          onClick={() => setShowScenarioPanel(true)}
+          className="ml-auto px-2 py-0.5 bg-amber-900/30 border border-amber-700/50 rounded text-amber-400 text-[9px] hover:bg-amber-900/50 transition-colors"
+        >
+          {state.activeScenario === 'normal' ? '特殊情况' : `场景: ${SCENARIOS.find(s => s.id === state.activeScenario)?.name || '正常'}`}
+        </button>
       </div>
     </div>
   );
