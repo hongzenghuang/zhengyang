@@ -152,13 +152,13 @@ export function updateFlightPhysics(
     newState.scenarioTimer = state.scenarioTimer + dt;
   }
 
-  // N1 response - fast spool up
-  const targetN1 = state.throttle * 0.85 + 15;
+  // N1 response - fast spool up, but starts from 0 when throttle is 0
+  const targetN1 = state.throttle > 0 ? state.throttle * 0.85 + 15 : 0;
   newState.engine1N1 = state.engine1Enabled 
-    ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, 8 * dt)
+    ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, 6 * dt)
     : Math.max(0, state.engine1N1 - dt * 15);
   newState.engine2N1 = state.engine2Enabled 
-    ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, 8 * dt)
+    ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, 6 * dt)
     : Math.max(0, state.engine2N1 - dt * 15);
 
   // Thrust calculation - direct from N1
@@ -268,13 +268,15 @@ export function updateFlightPhysics(
   const newTAS2 = newState.airspeed / Math.sqrt(Math.max(0.01, densityRatio));
   newState.groundSpeed = newTAS2 * 0.98;
 
-  // Gentle stability in air only (no ground damping)
+  // Gentle stability in air only - much weaker to allow manual control
   if (!isOnGround) {
-    if (Math.abs(state.pitch) > 2) {
-      newState.pitch = state.pitch * (1 - dt * 0.02);
+    // Only apply very gentle return to neutral when no input
+    // This allows pilot to maintain attitude manually
+    if (Math.abs(state.pitch) > 5) {
+      newState.pitch = state.pitch * (1 - dt * 0.005); // Very weak damping
     }
-    if (Math.abs(state.roll) > 2) {
-      newState.roll = state.roll * (1 - dt * 0.03);
+    if (Math.abs(state.roll) > 5) {
+      newState.roll = state.roll * (1 - dt * 0.008); // Very weak damping
     }
   }
 
@@ -311,12 +313,12 @@ export const initialAircraftState: AircraftState = {
   scenarioMessage: '',
 };
 
-// Takeoff-ready state: flaps set, on runway, throttle at idle (user advances manually)
+// Takeoff-ready state: flaps set, on runway, engines at true idle
 export const takeoffReadyState: AircraftState = {
   ...initialAircraftState,
   throttle: 0,
-  engine1N1: 15, // Idle N1
-  engine2N1: 15,
+  engine1N1: 0, // True idle - no thrust until user advances throttle
+  engine2N1: 0,
   flapsAngle: 15,
   gearDown: true,
   heading: 270,

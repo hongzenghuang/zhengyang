@@ -78,22 +78,22 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
 
     switch (action) {
       case 'THROTTLE_UP':
-        updates.throttle = Math.min(100, prev.throttle + 1);
+        updates.throttle = Math.min(100, prev.throttle + 2);
         break;
       case 'THROTTLE_DOWN':
-        updates.throttle = Math.max(0, prev.throttle - 1);
+        updates.throttle = Math.max(0, prev.throttle - 2);
         break;
       case 'PITCH_UP':
-        updates.pitch = Math.min(15, prev.pitch + 1);
+        updates.pitch = Math.min(20, prev.pitch + 2);
         break;
       case 'PITCH_DOWN':
-        updates.pitch = Math.max(-15, prev.pitch - 1);
+        updates.pitch = Math.max(-15, prev.pitch - 2);
         break;
       case 'ROLL_LEFT':
-        updates.roll = Math.max(-30, prev.roll - 2);
+        updates.roll = Math.max(-45, prev.roll - 4);
         break;
       case 'ROLL_RIGHT':
-        updates.roll = Math.min(30, prev.roll + 2);
+        updates.roll = Math.min(45, prev.roll + 4);
         break;
       case 'TOGGLE_GEAR':
         updates.gearDown = !prev.gearDown;

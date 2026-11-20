@@ -189,14 +189,8 @@ export default function FlightSimulatorPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Smooth visual transforms to prevent shaking
-  const [smoothRoll, setSmoothRoll] = useState(0);
-  const [smoothPitch, setSmoothPitch] = useState(0);
-  useEffect(() => {
-    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-    setSmoothRoll(prev => lerp(prev, state.roll, 0.3));
-    setSmoothPitch(prev => lerp(prev, state.pitch, 0.3));
-  }, [state.roll, state.pitch]);
+  // Use state directly for attitude indicator - no smoothing needed
+  // The physics engine already provides smooth transitions
 
   // Alert system - calculate warnings and trigger voice alerts
   useEffect(() => {
@@ -424,9 +418,8 @@ export default function FlightSimulatorPage() {
             style={{ 
               height: `${Math.min(50, groundOpacity * 50)}%`,
               opacity: groundOpacity,
-              transform: `rotate(${smoothRoll}deg)`,
+              transform: `rotate(${state.roll}deg)`,
               transformOrigin: 'center bottom',
-              transition: 'transform 0.05s linear'
             }}>
             <div className="absolute inset-0 bg-gradient-to-t from-[#2a4a1a] via-[#3a5a2a] to-[#4a6a3a]" />
             {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
@@ -449,18 +442,17 @@ export default function FlightSimulatorPage() {
           </div>
         )}
 
-        {/* Horizon glow - fixed position calculation */}
+        {/* Horizon glow - using state directly */}
         <div className="absolute left-0 right-0 h-8 pointer-events-none"
           style={{ 
-            top: `${50 - smoothPitch * 2}%`, 
-            transform: `rotate(${smoothRoll}deg)`, 
+            top: `${50 - state.pitch * 2}%`, 
+            transform: `rotate(${state.roll}deg)`, 
             transformOrigin: 'center',
             background: 'linear-gradient(to top, rgba(255,200,100,0.15), transparent)',
-            transition: 'transform 0.05s linear'
           }} />
 
         <div className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
-          style={{ top: `${50 - smoothPitch * 2}%`, transform: `rotate(${smoothRoll}deg)`, transformOrigin: 'center', transition: 'transform 0.05s linear' }} />
+          style={{ top: `${50 - state.pitch * 2}%`, transform: `rotate(${state.roll}deg)`, transformOrigin: 'center' }} />
         
         <div className="absolute top-2 left-3 flex gap-4 text-[10px]">
           <div className="flex flex-col items-center">
