@@ -232,32 +232,36 @@ export function updateFlightPhysics(
   newState.airspeed = Math.max(0, newIAS);
 
   // === VERTICAL MOTION ===
+  // Calculate vertical forces
+  const liftVertical = lift * Math.cos(rollRad) * Math.cos(pitchRad);
+  const weightVertical = weight;
+  const netForceVertical = liftVertical - weightVertical;
+  const accelVertical = netForceVertical / MASS;
+  
   if (isOnGround) {
-    newState.verticalSpeed = 0;
-    newState.altitude = 0;
+    // On ground: can only take off if lift > weight
+    if (netForceVertical > 0 && state.airspeed > 80) {
+      // Takeoff! Lift exceeds weight and speed is sufficient
+      const vsChange = accelVertical * 60 * dt;
+      newState.verticalSpeed = Math.max(0, state.verticalSpeed + vsChange);
+      newState.altitude = Math.max(0, state.altitude + (newState.verticalSpeed / 60) * dt);
+    } else {
+      // Stay on ground
+      newState.verticalSpeed = 0;
+      newState.altitude = 0;
+    }
   } else {
-    // Forces perpendicular to flight path
-    // Lift acts perpendicular to velocity vector (upward when level)
-    const liftVertical = lift * Math.cos(rollRad) * Math.cos(pitchRad);
-    // Weight always acts downward
-    const weightVertical = weight;
-    
-    const netForceVertical = liftVertical - weightVertical;
-    const accelVertical = netForceVertical / MASS;
-
-    // Update vertical speed (ft/min)
-    const vsChange = accelVertical * 60 * dt; // ft/s² to ft/min per dt
+    // In air: normal vertical motion
+    const vsChange = accelVertical * 60 * dt;
     newState.verticalSpeed = state.verticalSpeed + vsChange;
-
-    // Damping for stability
-    newState.verticalSpeed = newState.verticalSpeed * 0.995;
+    newState.verticalSpeed = newState.verticalSpeed * 0.995; // Damping
     newState.verticalSpeed = Math.max(-6000, Math.min(6000, newState.verticalSpeed));
 
-    // Update altitude
     const avgVS = (state.verticalSpeed + newState.verticalSpeed) / 2;
-    const altitudeChange = (avgVS / 60) * dt; // ft/min to ft per dt
+    const altitudeChange = (avgVS / 60) * dt;
     newState.altitude = Math.max(0, state.altitude + altitudeChange);
 
+    // Landing
     if (newState.altitude <= 0) {
       newState.altitude = 0;
       newState.verticalSpeed = Math.max(0, newState.verticalSpeed);
