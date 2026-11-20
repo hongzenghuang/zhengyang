@@ -1,6 +1,6 @@
 import { AircraftState } from './types';
 
-// Autopilot logic with smooth control
+// Autopilot with improved altitude and heading control
 export function applyAutopilot(
   state: AircraftState,
   deltaTime: number
@@ -12,28 +12,56 @@ export function applyAutopilot(
   const newState = { ...state };
   const dt = Math.min(deltaTime, 0.05);
 
-  // Heading hold - smooth roll control
+  // === HEADING HOLD (Roll Control) ===
   const headingError = state.targetHeading - state.heading;
-  let normalizedError = headingError;
-  if (normalizedError > 180) normalizedError -= 360;
-  if (normalizedError < -180) normalizedError += 360;
+  let normalizedHeadingError = headingError;
+  if (normalizedHeadingError > 180) normalizedHeadingError -= 360;
+  if (normalizedHeadingError < -180) normalizedHeadingError += 360;
 
-  // Calculate target roll (max 25 degrees bank)
-  const targetRoll = Math.max(-25, Math.min(25, normalizedError * 1.5));
+  // Target bank angle proportional to heading error (max 25°)
+  const targetRoll = Math.max(-25, Math.min(25, normalizedHeadingError * 2));
   const rollDiff = targetRoll - state.roll;
-  newState.roll = state.roll + rollDiff * dt * 1.5;
+  
+  // Smooth roll rate (max 3°/sec)
+  const maxRollRate = 3;
+  const rollChange = Math.max(-maxRollRate, Math.min(maxRollRate, rollDiff * 2));
+  newState.roll = state.roll + rollChange * dt;
 
-  // Altitude hold - smooth pitch control
+  // === ALTITUDE HOLD (Pitch Control) ===
   const altitudeError = state.targetAltitude - state.altitude;
   
-  // Calculate target vertical speed (max 1500 ft/min)
-  const targetVS = Math.max(-1500, Math.min(1500, altitudeError * 6));
+  // Phase 1: Calculate target vertical speed based on altitude error
+  // Large error = faster climb/descent, small error = gentle correction
+  const maxVS = 2000; // ft/min
+  const altGain = 8; // ft/min per ft of error
+  const targetVS = Math.max(-maxVS, Math.min(maxVS, altitudeError * altGain));
   
-  // Adjust pitch to achieve target vertical speed
+  // Phase 2: Pitch control to achieve target VS
   const vsError = targetVS - state.verticalSpeed;
-  const pitchAdjustment = vsError * 0.0005;
   
-  newState.pitch = Math.max(-10, Math.min(10, state.pitch + pitchAdjustment * dt * 6));
+  // Pitch adjustment proportional to VS error
+  // More aggressive when far from target, gentler when close
+  const vsGainLarge = 0.0008; // For large errors
+  const vsGainSmall = 0.0003; // For small errors
+  const vsGain = Math.abs(vsError) > 500 ? vsGainLarge : vsGainSmall;
+  
+  const pitchAdjustment = vsError * vsGain;
+  
+  // Limit pitch rate (max 2°/sec for smooth control)
+  const maxPitchRate = 2;
+  const pitchChange = Math.max(-maxPitchRate, Math.min(maxPitchRate, pitchAdjustment * 60));
+  
+  // Pitch limits: -8° to +12° (more nose-up authority for climb)
+  newState.pitch = Math.max(-8, Math.min(12, state.pitch + pitchChange * dt));
+
+  // === ALTITUDE CAPTURE (reduce overshoot) ===
+  // When within 200ft of target, reduce VS to prevent overshoot
+  if (Math.abs(altitudeError) < 200) {
+    const captureVS = altitudeError * 20; // Gentle correction
+    const captureVSError = captureVS - state.verticalSpeed;
+    const capturePitchAdj = captureVSError * 0.0002;
+    newState.pitch = Math.max(-5, Math.min(8, state.pitch + capturePitchAdj * dt * 60));
+  }
 
   return newState;
 }

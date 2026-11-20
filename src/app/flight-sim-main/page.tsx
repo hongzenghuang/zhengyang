@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { useFlight } from '@/contexts/FlightContext';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { SCENARIOS, FlightScenario } from '@/lib/types';
+import { calculateAlerts, hasMasterCaution, hasMasterWarning, getPriorityAlert, Alert } from '@/lib/warnings';
 
 interface TrafficAircraft {
   id: number;
@@ -130,6 +131,15 @@ export default function FlightSimulatorPage() {
   const groundOffsetRef = useRef(0);
   const [cloudOffset, setCloudOffset] = useState(0);
   const [groundOffset, setGroundOffset] = useState(0);
+  
+  // Alert system
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [masterCaution, setMasterCaution] = useState(false);
+  const [masterWarning, setMasterWarning] = useState(false);
+  const [masterCautionFlash, setMasterCautionFlash] = useState(false);
+  const [masterWarningFlash, setMasterWarningFlash] = useState(false);
+  const lastAlertAudioRef = useRef<string | null>(null);
+  const lastAlertTimeRef = useRef<number>(0);
 
   useKeyboardControls({ dispatch, enabled: true });
 
@@ -181,6 +191,61 @@ export default function FlightSimulatorPage() {
     setSmoothRoll(prev => lerp(prev, state.roll, 0.3));
     setSmoothPitch(prev => lerp(prev, state.pitch, 0.3));
   }, [state.roll, state.pitch]);
+
+  // Alert system - calculate warnings and trigger voice alerts
+  useEffect(() => {
+    const newAlerts = calculateAlerts(state);
+    setAlerts(newAlerts);
+    
+    const hasCaution = hasMasterCaution(newAlerts);
+    const hasWarning = hasMasterWarning(newAlerts);
+    
+    setMasterCaution(hasCaution);
+    setMasterWarning(hasWarning);
+    
+    // Flash master lights
+    if (hasWarning) {
+      setMasterWarningFlash(true);
+      const timer = setTimeout(() => setMasterWarningFlash(false), 500);
+      return () => clearTimeout(timer);
+    } else if (hasCaution) {
+      setMasterCautionFlash(true);
+      const timer = setTimeout(() => setMasterCautionFlash(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [state.airspeed, state.altitude, state.verticalSpeed, state.roll, state.engine1Enabled, state.engine2Enabled, state.gearDown, state.flapsAngle, state.autopilotEnabled, state.targetAltitude]);
+
+  // Voice alerts using Web Speech API
+  useEffect(() => {
+    const priorityAlert = getPriorityAlert(alerts);
+    const now = Date.now();
+    
+    // Only speak if alert changed and enough time has passed (prevent spam)
+    if (priorityAlert?.audio && 
+        priorityAlert.audio !== lastAlertAudioRef.current &&
+        now - lastAlertTimeRef.current > 3000) {
+      
+      if ('speechSynthesis' in window) {
+        // Cancel any ongoing speech
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(priorityAlert.audio);
+        utterance.rate = 0.9;
+        utterance.pitch = 0.8;
+        utterance.volume = 1;
+        utterance.lang = 'en-US';
+        
+        window.speechSynthesis.speak(utterance);
+        lastAlertAudioRef.current = priorityAlert.audio;
+        lastAlertTimeRef.current = now;
+      }
+    }
+    
+    // Reset if no alerts
+    if (!priorityAlert) {
+      lastAlertAudioRef.current = null;
+    }
+  }, [alerts]);
 
   useEffect(() => {
     let animFrame: number;
@@ -385,6 +450,56 @@ export default function FlightSimulatorPage() {
           </div>
         </div>
       </div>
+
+      {/* Master Caution/Warning Lights and ECAM Messages */}
+      {(masterCaution || masterWarning) && (
+        <div className="flex-shrink-0 flex items-center gap-3 px-3 py-1 bg-black border-b border-[#2a2a2a]">
+          {/* Master Warning Light (Red) */}
+          <div 
+            className={`px-3 py-1 rounded font-bold text-xs tracking-wider transition-all ${
+              masterWarning && masterWarningFlash
+                ? 'bg-red-600 text-white shadow-lg shadow-red-500/50'
+                : masterWarning
+                ? 'bg-red-900/50 text-red-400 border border-red-600'
+                : 'bg-transparent text-gray-600'
+            }`}
+          >
+            MASTER WARNING
+          </div>
+          
+          {/* Master Caution Light (Amber) */}
+          <div 
+            className={`px-3 py-1 rounded font-bold text-xs tracking-wider transition-all ${
+              masterCaution && masterCautionFlash && !masterWarning
+                ? 'bg-amber-500 text-black shadow-lg shadow-amber-400/50'
+                : masterCaution && !masterWarning
+                ? 'bg-amber-900/50 text-amber-400 border border-amber-600'
+                : 'bg-transparent text-gray-600'
+            }`}
+          >
+            MASTER CAUTION
+          </div>
+
+          {/* ECAM Messages */}
+          <div className="flex-1 flex gap-2 overflow-x-auto">
+            {alerts.filter(a => a.level === 'warning').map(alert => (
+              <span key={alert.id} className="px-2 py-0.5 bg-red-900/30 border border-red-600 rounded text-red-400 text-[10px] font-bold whitespace-nowrap">
+                {alert.message}
+              </span>
+            ))}
+            {alerts.filter(a => a.level === 'caution').map(alert => (
+              <span key={alert.id} className="px-2 py-0.5 bg-amber-900/30 border border-amber-600 rounded text-amber-400 text-[10px] font-bold whitespace-nowrap">
+                {alert.message}
+              </span>
+            ))}
+            {alerts.filter(a => a.level === 'advisory').map(alert => (
+              <span key={alert.id} className="px-2 py-0.5 bg-blue-900/30 border border-blue-600 rounded text-blue-400 text-[10px] whitespace-nowrap">
+                {alert.message}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* MCP Panel */}
       <div className="mcp-panel flex items-center justify-center gap-2 px-3 py-1.5 bg-[#111] border-y border-[#2a2a2a] flex-shrink-0">
