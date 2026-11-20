@@ -289,6 +289,45 @@ export function updateFlightPhysics(
   // Apply scenario effects
   applyScenarioEffects(state, newState, dt);
 
+  // === CRASH DETECTION ===
+  if (!state.crashed) {
+    // Crash conditions:
+    // 1. Hit ground with excessive vertical speed (>1000 ft/min)
+    // 2. Hit ground with excessive pitch (>25° or <-20°)
+    // 3. Hit ground with excessive roll (>45°)
+    // 4. Overspeed structural failure (>400 kts IAS at low altitude)
+    
+    const hardLanding = newState.altitude <= 0 && state.verticalSpeed < -1000;
+    const noseDive = newState.altitude <= 0 && state.pitch < -20;
+    const wingStrike = newState.altitude <= 0 && Math.abs(state.roll) > 45;
+    const overspeedFailure = state.airspeed > 400 && state.altitude < 5000;
+    
+    if (hardLanding) {
+      newState.crashed = true;
+      newState.crashReason = '硬着陆 - 下降率过大';
+    } else if (noseDive) {
+      newState.crashed = true;
+      newState.crashReason = '俯冲坠毁 - 俯仰角过大';
+    } else if (wingStrike) {
+      newState.crashed = true;
+      newState.crashReason = '翼尖触地 - 滚转角过大';
+    } else if (overspeedFailure) {
+      newState.crashed = true;
+      newState.crashReason = '超速解体 - 空速超过结构限制';
+    }
+  }
+
+  // If crashed, freeze all motion
+  if (newState.crashed) {
+    newState.airspeed = 0;
+    newState.verticalSpeed = 0;
+    newState.groundSpeed = 0;
+    newState.altitude = 0;
+    newState.engine1N1 = 0;
+    newState.engine2N1 = 0;
+    newState.throttle = 0;
+  }
+
   return newState;
 }
 
@@ -317,6 +356,8 @@ export const initialAircraftState: AircraftState = {
   activeScenario: 'normal',
   scenarioTimer: 0,
   scenarioMessage: '',
+  crashed: false,
+  crashReason: '',
 };
 
 // Takeoff-ready state: flaps set, on runway, engines at true idle

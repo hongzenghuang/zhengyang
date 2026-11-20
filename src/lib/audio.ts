@@ -94,6 +94,59 @@ class AudioSystem {
     oscillator.stop(this.audioContext.currentTime + 0.05);
   }
 
+  // Crash explosion sound effect
+  playCrash() {
+    if (!this.isInitialized || !this.audioContext) return;
+    
+    // Explosion noise burst
+    const bufferSize = this.audioContext.sampleRate * 2; // 2 seconds
+    const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    
+    // Generate explosion-like noise (decaying amplitude)
+    for (let i = 0; i < bufferSize; i++) {
+      const decay = Math.exp(-i / (this.audioContext.sampleRate * 0.3));
+      output[i] = (Math.random() * 2 - 1) * decay;
+    }
+    
+    const noiseSource = this.audioContext.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+    
+    // Low-pass filter for rumble effect
+    const filter = this.audioContext.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 400;
+    
+    const gain = this.audioContext.createGain();
+    gain.gain.value = 0.5;
+    gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 2);
+    
+    noiseSource.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.audioContext.destination);
+    
+    noiseSource.start();
+    noiseSource.stop(this.audioContext.currentTime + 2);
+    
+    // Add a low frequency boom
+    const boom = this.audioContext.createOscillator();
+    const boomGain = this.audioContext.createGain();
+    boom.type = 'sine';
+    boom.frequency.value = 60;
+    boomGain.gain.value = 0.4;
+    boomGain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1);
+    
+    boom.connect(boomGain);
+    boomGain.connect(this.audioContext.destination);
+    boom.start();
+    boom.stop(this.audioContext.currentTime + 1);
+    
+    // Stop wind sound
+    if (this.windGain) {
+      this.windGain.gain.value = 0;
+    }
+  }
+
   stop() {
     if (this.windNoise) {
       this.windNoise.stop();

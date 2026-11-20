@@ -51,9 +51,14 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
         pendingUpdatesRef.current = {};
       }
 
-      let newState = updateFlightPhysics(stateRef.current, deltaTime);
-      newState = applyAutopilot(newState, deltaTime);
-      newState = applyAutothrottle(newState, deltaTime);
+      let newState = stateRef.current;
+      
+      // Only update physics if not crashed
+      if (!stateRef.current.crashed) {
+        newState = updateFlightPhysics(stateRef.current, deltaTime);
+        newState = applyAutopilot(newState, deltaTime);
+        newState = applyAutothrottle(newState, deltaTime);
+      }
 
       stateRef.current = newState;
       setState(newState);
@@ -147,6 +152,12 @@ export function FlightProvider({ children }: { children: React.ReactNode }) {
       }
       case 'SET_SCENARIO':
         break;
+      case 'RESET':
+        // Reset to initial state
+        stateRef.current = initialAircraftState;
+        setState(initialAircraftState);
+        lastTimeRef.current = Date.now();
+        return;
     }
 
     // Queue updates to be applied in next animation frame

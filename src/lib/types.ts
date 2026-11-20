@@ -35,6 +35,10 @@ export interface AircraftState {
   activeScenario: FlightScenario;
   scenarioTimer: number;   // Seconds since scenario started
   scenarioMessage: string; // Alert message for current scenario
+
+  // Crash state
+  crashed: boolean;        // Aircraft has crashed
+  crashReason: string;     // Reason for crash
 }
 
 // Flight scenarios
@@ -78,7 +82,8 @@ export type ControlAction =
   | 'TOGGLE_REVERSE_THRUST'
   | 'FLAPS_UP'
   | 'FLAPS_DOWN'
-  | 'SET_SCENARIO';
+  | 'SET_SCENARIO'
+  | 'RESET';
 
 // Tutorial step
 export interface TutorialStep {

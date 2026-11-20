@@ -5,6 +5,7 @@ import { useFlight } from '@/contexts/FlightContext';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { SCENARIOS, FlightScenario } from '@/lib/types';
 import { calculateAlerts, hasMasterCaution, hasMasterWarning, getPriorityAlert, Alert } from '@/lib/warnings';
+import { audioSystem } from '@/lib/audio';
 
 interface TrafficAircraft {
   id: number;
@@ -297,6 +298,29 @@ export default function FlightSimulatorPage() {
     }, 500);
     return () => clearInterval(interval);
   }, [state.airspeed, state.altitude]);
+
+  // Crash detection - play crash sound and speak warning
+  const prevCrashedRef = useRef(false);
+  useEffect(() => {
+    if (state.crashed && !prevCrashedRef.current) {
+      // Just crashed - play explosion sound
+      audioSystem.playCrash();
+      
+      // Speak crash warning
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance('Crash. Aircraft destroyed.');
+          utterance.rate = 0.8;
+          utterance.pitch = 0.7;
+          utterance.volume = 1;
+          utterance.lang = 'en-US';
+          window.speechSynthesis.speak(utterance);
+        }, 500);
+      }
+    }
+    prevCrashedRef.current = state.crashed;
+  }, [state.crashed]);
 
   useEffect(() => {
     let animFrame: number;
@@ -1099,6 +1123,61 @@ export default function FlightSimulatorPage() {
           </div>
         </div>
       </div>
+
+      {/* Crash Overlay */}
+      {state.crashed && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          {/* Fire/explosion effect */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-radial from-orange-600/30 via-red-900/20 to-transparent animate-pulse" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-orange-500/20 blur-3xl animate-ping" />
+          </div>
+          
+          <div className="relative z-10 text-center p-8 max-w-md">
+            {/* Crash icon */}
+            <div className="text-6xl mb-4 animate-bounce">💥</div>
+            
+            {/* Crash title */}
+            <h1 className="text-4xl font-bold text-red-500 mb-2 tracking-wider animate-pulse">
+              CRASH
+            </h1>
+            
+            {/* Crash reason */}
+            <p className="text-xl text-red-400 mb-6">
+              {state.crashReason}
+            </p>
+            
+            {/* Stats */}
+            <div className="bg-black/50 border border-red-900/50 rounded-lg p-4 mb-6 text-left">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="text-gray-400">最终高度:</div>
+                <div className="text-white font-mono">{Math.round(state.altitude)} ft</div>
+                <div className="text-gray-400">最终空速:</div>
+                <div className="text-white font-mono">{Math.round(state.airspeed)} kts</div>
+                <div className="text-gray-400">下降率:</div>
+                <div className="text-red-400 font-mono">{Math.round(state.verticalSpeed)} ft/min</div>
+                <div className="text-gray-400">俯仰角:</div>
+                <div className="text-white font-mono">{state.pitch.toFixed(1)}°</div>
+                <div className="text-gray-400">滚转角:</div>
+                <div className="text-white font-mono">{state.roll.toFixed(1)}°</div>
+              </div>
+            </div>
+            
+            {/* Reset button */}
+            <button
+              onClick={() => dispatch('RESET')}
+              className="px-8 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-red-900/50"
+            >
+              重新开始
+            </button>
+            
+            {/* Tips */}
+            <p className="text-xs text-gray-500 mt-4">
+              提示: 着陆时保持下降率在 500-800 ft/min，俯仰角 2-5°
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Scenario Panel (floating) */}
       {showScenarioPanel && (
