@@ -248,8 +248,10 @@ export function updateFlightPhysics(
   const accelVertical = netForceVertical / MASS;
   
   if (isOnGround) {
-    // On ground: can only take off if lift > weight
-    if (netForceVertical > 0 && state.airspeed > 80) {
+    // On ground: can only take off if lift > weight AND speed > VR (rotation speed)
+    // VR for B777-9 is approximately 140-150 knots depending on weight
+    const rotationSpeed = 140; // VR - rotation speed
+    if (netForceVertical > 0 && state.airspeed > rotationSpeed) {
       // Takeoff! Lift exceeds weight and speed is sufficient
       const vsChange = accelVertical * 60 * dt;
       newState.verticalSpeed = Math.max(0, state.verticalSpeed + vsChange);

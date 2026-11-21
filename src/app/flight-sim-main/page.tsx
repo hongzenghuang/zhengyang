@@ -684,6 +684,32 @@ export default function FlightSimulatorPage() {
                   </g>
                 );
               })}
+              
+              {/* V-Speeds markers (V1/VR/V2) - only show during takeoff roll */}
+              {state.altitude < 100 && state.gearDown && (() => {
+                const V1 = 135; // Decision speed
+                const VR = 140; // Rotation speed
+                const V2 = 150; // Takeoff safety speed
+                const speeds = [
+                  { speed: V1, label: 'V1', color: '#00aaff' },
+                  { speed: VR, label: 'VR', color: '#ffaa00' },
+                  { speed: V2, label: 'V2', color: '#00ff88' },
+                ];
+                return speeds.map(({ speed, label, color }) => {
+                  const y = 180 - (speed - state.airspeed) * 2;
+                  if (y < 80 || y > 280) return null;
+                  return (
+                    <g key={`vspeed-${label}`}>
+                      <line x1="0" y1={y} x2="60" y2={y} stroke={color} strokeWidth="2" strokeDasharray="4,2" />
+                      <rect x="0" y={y - 8} width="20" height="16" fill={color} rx="2" />
+                      <text x="10" y={y + 4} textAnchor="middle" fill="#000" fontSize="9" fontWeight="bold" fontFamily="monospace">
+                        {label}
+                      </text>
+                    </g>
+                  );
+                });
+              })()}
+              
               {/* Current speed box */}
               <rect x="5" y="170" width="55" height="20" fill="#000" stroke="#00ff88" strokeWidth="2" />
               <text x="32" y="184" textAnchor="middle" fill="#00ff88" fontSize="14" fontWeight="bold" fontFamily="monospace">
