@@ -251,12 +251,16 @@ export function updateFlightPhysics(
   
   if (isOnGround) {
     // On ground: can only take off if lift > weight AND speed > VR (rotation speed)
-    // VR for B777-9 is approximately 140-150 knots depending on weight
-    const rotationSpeed = 140; // VR - rotation speed
+    // VR for B777-9 is approximately 155 knots (V1=150, VR=155, V2=165)
+    const rotationSpeed = 155; // VR - rotation speed
     if (netForceVertical > 0 && state.airspeed > rotationSpeed) {
       // Takeoff! Lift exceeds weight and speed is sufficient
       const vsChange = accelVertical * 60 * dt;
       newState.verticalSpeed = Math.max(0, state.verticalSpeed + vsChange);
+      // Limit initial climb rate to realistic values (max 2500 ft/min)
+      if (newState.altitude < 1000) {
+        newState.verticalSpeed = Math.min(2500, newState.verticalSpeed);
+      }
       newState.altitude = Math.max(0, state.altitude + (newState.verticalSpeed / 60) * dt);
     } else {
       // Stay on ground
@@ -268,7 +272,9 @@ export function updateFlightPhysics(
     const vsChange = accelVertical * 60 * dt;
     newState.verticalSpeed = state.verticalSpeed + vsChange;
     newState.verticalSpeed = newState.verticalSpeed * 0.995; // Damping
-    newState.verticalSpeed = Math.max(-6000, Math.min(6000, newState.verticalSpeed));
+    // Limit climb rate based on altitude (lower max VS at higher altitudes)
+    const maxClimbRate = state.altitude < 10000 ? 3000 : 2500;
+    newState.verticalSpeed = Math.max(-4000, Math.min(maxClimbRate, newState.verticalSpeed));
 
     const avgVS = (state.verticalSpeed + newState.verticalSpeed) / 2;
     const altitudeChange = (avgVS / 60) * dt;

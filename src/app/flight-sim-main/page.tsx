@@ -687,9 +687,9 @@ export default function FlightSimulatorPage() {
               
               {/* V-Speeds markers (V1/VR/V2) - only show during takeoff roll */}
               {state.altitude < 100 && state.gearDown && (() => {
-                const V1 = 135; // Decision speed
-                const VR = 140; // Rotation speed
-                const V2 = 150; // Takeoff safety speed
+                const V1 = 150; // Decision speed
+                const VR = 155; // Rotation speed
+                const V2 = 165; // Takeoff safety speed
                 const speeds = [
                   { speed: V1, label: 'V1', color: '#00aaff' },
                   { speed: VR, label: 'VR', color: '#ffaa00' },
