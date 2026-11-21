@@ -26,27 +26,25 @@ interface Weather {
   temperature: number;
 }
 
-// Circular gauge component for engine parameters
-function CircularGauge({ 
+// LCD Digital Display component for engine parameters
+function LCDDisplay({ 
   value, 
-  max, 
   label, 
   unit, 
   warning = 85,
-  danger = 95 
+  danger = 95,
+  maxValue = 100,
+  decimals = 1
 }: { 
   value: number; 
-  max: number; 
   label: string; 
   unit: string;
   warning?: number;
   danger?: number;
+  maxValue?: number;
+  decimals?: number;
 }) {
-  const percentage = Math.min(100, (value / max) * 100);
-  const startAngle = -225;
-  const endAngle = 45;
-  const totalAngle = endAngle - startAngle;
-  const currentAngle = startAngle + (percentage / 100) * totalAngle;
+  const percentage = Math.min(100, (value / maxValue) * 100);
   
   const getColor = () => {
     if (percentage >= danger) return '#ff4444';
@@ -54,63 +52,38 @@ function CircularGauge({
     return '#00ff88';
   };
 
-  const polarToCartesian = (cx: number, cy: number, r: number, angle: number) => {
-    const rad = (angle * Math.PI) / 180;
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-  };
-
-  const describeArc = (cx: number, cy: number, r: number, start: number, end: number) => {
-    const s = polarToCartesian(cx, cy, r, start);
-    const e = polarToCartesian(cx, cy, r, end);
-    const largeArc = end - start > 180 ? 1 : 0;
-    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${largeArc} 1 ${e.x} ${e.y}`;
-  };
+  const color = getColor();
 
   return (
-    <div className="relative w-full aspect-square max-w-[100px]">
-      <svg viewBox="0 0 100 100" className="w-full h-full">
-        {/* Background arc */}
-        <path
-          d={describeArc(50, 50, 40, startAngle, endAngle)}
-          fill="none"
-          stroke="#1a3a1a"
-          strokeWidth="6"
-          strokeLinecap="round"
+    <div className="relative bg-[#0a0a0a] border border-[#2a2a2a] rounded p-2 flex flex-col items-center">
+      {/* Label */}
+      <div className="text-[8px] text-[#6a8a6a] tracking-wider mb-1">{label}</div>
+      
+      {/* LCD Display */}
+      <div 
+        className="font-mono font-bold text-xl leading-none tracking-tight"
+        style={{ 
+          color,
+          textShadow: `0 0 8px ${color}, 0 0 12px ${color}40`,
+          fontFamily: 'monospace'
+        }}
+      >
+        {value.toFixed(decimals)}
+      </div>
+      
+      {/* Unit */}
+      <div className="text-[7px] text-[#6a8a6a] mt-0.5">{unit}</div>
+      
+      {/* Bar indicator */}
+      <div className="w-full h-1 bg-[#1a1a1a] rounded mt-1.5 overflow-hidden">
+        <div 
+          className="h-full rounded transition-all duration-100"
+          style={{ 
+            width: `${percentage}%`,
+            backgroundColor: color,
+            boxShadow: `0 0 4px ${color}`
+          }}
         />
-        {/* Value arc */}
-        <path
-          d={describeArc(50, 50, 40, startAngle, currentAngle)}
-          fill="none"
-          stroke={getColor()}
-          strokeWidth="6"
-          strokeLinecap="round"
-          style={{ filter: `drop-shadow(0 0 3px ${getColor()})` }}
-        />
-        {/* Tick marks */}
-        {[0, 25, 50, 75, 100].map(tick => {
-          const angle = startAngle + (tick / 100) * totalAngle;
-          const inner = polarToCartesian(50, 50, 32, angle);
-          const outer = polarToCartesian(50, 50, 36, angle);
-          return (
-            <line
-              key={tick}
-              x1={inner.x} y1={inner.y}
-              x2={outer.x} y2={outer.y}
-              stroke="#6a8a6a"
-              strokeWidth="1"
-            />
-          );
-        })}
-        {/* Center value */}
-        <text x="50" y="48" textAnchor="middle" fill={getColor()} fontSize="14" fontWeight="bold" fontFamily="monospace">
-          {value.toFixed(0)}
-        </text>
-        <text x="50" y="60" textAnchor="middle" fill="#6a8a6a" fontSize="7" fontFamily="monospace">
-          {unit}
-        </text>
-      </svg>
-      <div className="absolute top-1 left-1/2 -translate-x-1/2 text-[8px] text-[#6a8a6a] tracking-wider">
-        {label}
       </div>
     </div>
   );
@@ -961,21 +934,23 @@ export default function FlightSimulatorPage() {
           </div>
         </div>
 
-        {/* EICAS - Electronic Engine Display with Circular Gauges */}
+        {/* EICAS - Electronic Engine Display with LCD Digital Displays */}
         <div className="col-span-4 bg-black rounded border-2 border-[#1a1a1a] shadow-inner flex flex-col overflow-hidden min-h-0">
           <div className="text-center text-[8px] text-gray-500 tracking-widest py-0.5 border-b border-[#1a1a1a] flex-shrink-0">
             ENGINE INDICATION & CREW ALERTING
           </div>
           <div className="flex-1 flex flex-col p-2 gap-2 overflow-y-auto min-h-0">
-            {/* Engine N1 Circular Gauges */}
+            {/* Engine N1/N2/N3 LCD Displays */}
             <div className="grid grid-cols-2 gap-2 flex-shrink-0">
               {[1, 2].map(engNum => {
                 const n1 = engNum === 1 ? state.engine1N1 : state.engine2N1;
+                const n2 = Math.min(100, n1 * 1.05);
+                const n3 = Math.min(100, n1 * 0.95);
                 const enabled = engNum === 1 ? state.engine1Enabled : state.engine2Enabled;
                 return (
-                  <div key={engNum} className="eicas-display p-2 flex flex-col items-center">
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <span className="eicas-label">ENG {engNum}</span>
+                  <div key={engNum} className="eicas-display p-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="eicas-label font-bold">ENG {engNum}</span>
                       <button
                         onClick={() => dispatch(engNum === 1 ? 'TOGGLE_ENGINE_1' : 'TOGGLE_ENGINE_2')}
                         className={`text-[8px] px-1.5 py-0.5 rounded border ${
@@ -983,33 +958,11 @@ export default function FlightSimulatorPage() {
                         }`}
                       >{enabled ? 'ON' : 'OFF'}</button>
                     </div>
-                    <CircularGauge value={n1} max={100} label="N1" unit="%" warning={85} danger={95} />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* N2 Circular Gauges */}
-            <div className="grid grid-cols-2 gap-2 flex-shrink-0">
-              {[1, 2].map(engNum => {
-                const n1 = engNum === 1 ? state.engine1N1 : state.engine2N1;
-                const n2 = Math.min(100, n1 * 1.05);
-                return (
-                  <div key={`n2-${engNum}`} className="eicas-display p-2 flex flex-col items-center">
-                    <CircularGauge value={n2} max={100} label={`ENG${engNum} N2`} unit="%" warning={90} danger={98} />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* N3 Circular Gauges */}
-            <div className="grid grid-cols-2 gap-2 flex-shrink-0">
-              {[1, 2].map(engNum => {
-                const n1 = engNum === 1 ? state.engine1N1 : state.engine2N1;
-                const n3 = Math.min(100, n1 * 0.95);
-                return (
-                  <div key={`n3-${engNum}`} className="eicas-display p-2 flex flex-col items-center">
-                    <CircularGauge value={n3} max={100} label={`ENG${engNum} N3`} unit="%" warning={85} danger={95} />
+                    <div className="grid grid-cols-3 gap-1">
+                      <LCDDisplay value={n1} label="N1" unit="%" warning={85} danger={95} maxValue={100} decimals={1} />
+                      <LCDDisplay value={n2} label="N2" unit="%" warning={90} danger={98} maxValue={100} decimals={1} />
+                      <LCDDisplay value={n3} label="N3" unit="%" warning={85} danger={95} maxValue={100} decimals={1} />
+                    </div>
                   </div>
                 );
               })}
@@ -1019,7 +972,15 @@ export default function FlightSimulatorPage() {
             <div className="eicas-display p-2 flex-shrink-0">
               <div className="flex items-center justify-between mb-1">
                 <span className="eicas-label">THROTTLE</span>
-                <span className="eicas-value text-lg font-bold">{Math.round(state.throttle)}%</span>
+                <span 
+                  className="font-mono font-bold text-lg"
+                  style={{ 
+                    color: '#00ff88',
+                    textShadow: '0 0 8px #00ff88, 0 0 12px #00ff8840'
+                  }}
+                >
+                  {Math.round(state.throttle)}%
+                </span>
               </div>
               <input
                 type="range" min="0" max="100" step="1"
@@ -1042,33 +1003,36 @@ export default function FlightSimulatorPage() {
               </div>
             </div>
 
-            {/* Engine Parameters - Circular Gauges */}
+            {/* Engine Parameters - LCD Displays */}
             <div className="eicas-display p-2 flex-shrink-0">
               <div className="eicas-label mb-2 text-center">ENGINE PARAMETERS</div>
               <div className="grid grid-cols-3 gap-1">
-                <CircularGauge 
+                <LCDDisplay 
                   value={400 + state.engine1N1 * 3} 
-                  max={900} 
                   label="EGT" 
                   unit="°C"
                   warning={75}
                   danger={90}
+                  maxValue={900}
+                  decimals={0}
                 />
-                <CircularGauge 
+                <LCDDisplay 
                   value={40 + state.engine1N1 * 0.3} 
-                  max={80} 
-                  label="OIL" 
+                  label="OIL PRESS" 
                   unit="PSI"
                   warning={80}
                   danger={90}
+                  maxValue={80}
+                  decimals={0}
                 />
-                <CircularGauge 
+                <LCDDisplay 
                   value={60 + state.engine1N1 * 0.2} 
-                  max={120} 
-                  label="OIL" 
+                  label="OIL TEMP" 
                   unit="°C"
                   warning={75}
                   danger={90}
+                  maxValue={120}
+                  decimals={0}
                 />
               </div>
             </div>

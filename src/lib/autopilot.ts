@@ -1,16 +1,32 @@
 import { AircraftState } from './types';
 
-// Autopilot with direct altitude control - much more reliable
+// PID state for autopilot altitude control
+let apIntegral = 0;
+let apLastError = 0;
+let apLastTime = Date.now();
+
+// Reset PID state
+export function resetAutopilotPID() {
+  apIntegral = 0;
+  apLastError = 0;
+  apLastTime = Date.now();
+}
+
+// Autopilot with PID altitude control for stable altitude holding
 export function applyAutopilot(
   state: AircraftState,
   deltaTime: number
 ): AircraftState {
   if (!state.autopilotEnabled) {
+    resetAutopilotPID();
     return state;
   }
 
   const newState = { ...state };
   const dt = Math.min(deltaTime, 0.05);
+  const now = Date.now();
+  const actualDt = (now - apLastTime) / 1000;
+  apLastTime = now;
 
   // === HEADING HOLD (Roll Control) ===
   const headingError = state.targetHeading - state.heading;
@@ -27,41 +43,48 @@ export function applyAutopilot(
   const rollChange = Math.max(-maxRollRate, Math.min(maxRollRate, rollDiff * 2));
   newState.roll = state.roll + rollChange * dt;
 
-  // === ALTITUDE HOLD (Direct Pitch Control) ===
+  // === ALTITUDE HOLD (PID Pitch Control) ===
   const altitudeError = state.targetAltitude - state.altitude;
   
-  // Direct pitch control based on altitude error
-  // Positive error = need to climb = positive pitch
-  // Negative error = need to descend = negative pitch
-  
-  // Calculate required pitch angle to achieve target altitude
-  // At cruise, ~2° pitch maintains level flight
-  // Each degree of pitch ≈ 500 ft/min vertical speed
-  const basePitch = 2; // Level flight pitch
-  const pitchPerFPM = 0.004; // degrees per ft/min
-  
-  // Target vertical speed based on altitude error
-  const maxVS = 3000; // ft/min
-  const targetVS = Math.max(-maxVS, Math.min(maxVS, altitudeError * 8));
-  
-  // Target pitch = base + VS contribution
-  const targetPitch = basePitch + targetVS * pitchPerFPM;
-  
-  // Smooth pitch transition
-  const pitchError = targetPitch - state.pitch;
-  const maxPitchRate = 4; // degrees per second
-  const pitchChange = Math.max(-maxPitchRate, Math.min(maxPitchRate, pitchError * 3));
-  
-  // Apply pitch with wider limits for better authority
-  newState.pitch = Math.max(-15, Math.min(20, state.pitch + pitchChange * dt));
-
-  // === ALTITUDE CAPTURE (prevent overshoot) ===
-  if (Math.abs(altitudeError) < 200) {
-    // Very close to target - use gentle correction
-    const capturePitch = basePitch + (altitudeError * 0.01);
-    const captureError = capturePitch - state.pitch;
-    newState.pitch = state.pitch + Math.max(-1, Math.min(1, captureError * 2)) * dt;
+  // Dead zone - don't adjust if within 50ft of target
+  if (Math.abs(altitudeError) < 50) {
+    apIntegral = 0; // Reset integral in dead zone
+    // Maintain current pitch with small correction
+    const levelPitch = 2; // Level flight pitch
+    const pitchError = levelPitch - state.pitch;
+    newState.pitch = state.pitch + Math.max(-0.5, Math.min(0.5, pitchError * 0.5)) * dt;
+    return newState;
   }
+  
+  // PID gains - tuned for stability
+  const Kp = 0.008; // Proportional
+  const Ki = 0.001; // Integral (eliminates steady-state error)
+  const Kd = 0.003; // Derivative (dampens oscillation)
+  
+  // Integral term (with anti-windup)
+  apIntegral += altitudeError * actualDt;
+  apIntegral = Math.max(-200, Math.min(200, apIntegral)); // Anti-windup
+  
+  // Derivative term (rate of change of error)
+  const derivative = actualDt > 0 ? (altitudeError - apLastError) / actualDt : 0;
+  apLastError = altitudeError;
+  
+  // PID output = target pitch adjustment
+  const pidOutput = (Kp * altitudeError) + (Ki * apIntegral) + (Kd * derivative);
+  
+  // Base pitch for level flight
+  const basePitch = 2;
+  const targetPitch = basePitch + pidOutput;
+  
+  // Limit pitch: -12° to +18°
+  const clampedTargetPitch = Math.max(-12, Math.min(18, targetPitch));
+  
+  // Smooth pitch transition (max 2°/sec)
+  const pitchError = clampedTargetPitch - state.pitch;
+  const maxPitchRate = 2;
+  const pitchChange = Math.max(-maxPitchRate, Math.min(maxPitchRate, pitchError * 2));
+  
+  newState.pitch = state.pitch + pitchChange * dt;
 
   return newState;
 }

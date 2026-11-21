@@ -48,10 +48,10 @@ function getLiftCoefficient(
 function getDragCoefficient(
   liftCoeff: number, flapsAngle: number, gearDown: boolean, scenario: FlightScenario
 ): number {
-  const baseCD = 0.018; // Reduced base drag
-  const inducedDrag = 0.035 * liftCoeff * liftCoeff; // Reduced induced drag
-  const flapsDrag = flapsAngle * 0.0025;
-  const gearDrag = gearDown ? 0.012 : 0;
+  const baseCD = 0.015; // Further reduced base drag
+  const inducedDrag = 0.025 * liftCoeff * liftCoeff; // Much lower induced drag
+  const flapsDrag = flapsAngle * 0.002;
+  const gearDrag = gearDown ? 0.010 : 0;
   // Icing adds extra drag
   const icingDrag = scenario === 'icing' ? 0.012 : 0;
   return baseCD + inducedDrag + flapsDrag + gearDrag + icingDrag;
@@ -152,18 +152,27 @@ export function updateFlightPhysics(
     newState.scenarioTimer = state.scenarioTimer + dt;
   }
 
-  // N1 response - fast spool up, but starts from 0 when throttle is 0
-  const targetN1 = state.throttle > 0 ? state.throttle * 0.85 + 15 : 0;
+  // N1 response - realistic spool up time
+  // Idle N1 = 20%, Max N1 = 100%
+  const targetN1 = state.throttle > 0 ? 20 + state.throttle * 0.8 : 20;
+  const spoolRate = 3; // Slower spool rate for realism (was 6)
   newState.engine1N1 = state.engine1Enabled 
-    ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, 6 * dt)
-    : Math.max(0, state.engine1N1 - dt * 15);
+    ? state.engine1N1 + (targetN1 - state.engine1N1) * Math.min(1, spoolRate * dt)
+    : Math.max(0, state.engine1N1 - dt * 10);
   newState.engine2N1 = state.engine2Enabled 
-    ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, 6 * dt)
-    : Math.max(0, state.engine2N1 - dt * 15);
+    ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, spoolRate * dt)
+    : Math.max(0, state.engine2N1 - dt * 10);
 
-  // Thrust calculation - direct from N1
-  const n1Thrust1 = state.engine1Enabled ? (newState.engine1N1 / 100) * MAX_THRUST_PER_ENGINE : 0;
-  const n1Thrust2 = state.engine2Enabled ? (newState.engine2N1 / 100) * MAX_THRUST_PER_ENGINE : 0;
+  // Thrust calculation - direct from N1 with idle thrust
+  // At idle (N1=20%), thrust = 10% of max
+  // At max (N1=100%), thrust = 100% of max
+  const thrustFromN1 = (n1: number) => {
+    if (n1 < 20) return 0;
+    const normalizedN1 = (n1 - 20) / 80; // 0 to 1
+    return normalizedN1 * MAX_THRUST_PER_ENGINE;
+  };
+  const n1Thrust1 = state.engine1Enabled ? thrustFromN1(newState.engine1N1) : 0;
+  const n1Thrust2 = state.engine2Enabled ? thrustFromN1(newState.engine2N1) : 0;
   const totalThrust = n1Thrust1 + n1Thrust2;
 
   // Ground detection
