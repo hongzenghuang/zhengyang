@@ -270,16 +270,16 @@ export function updateFlightPhysics(
     }
   } else {
     // In air: normal vertical motion
-    // Apply stronger damping to prevent VS oscillation
+    // Apply moderate damping to prevent VS oscillation while allowing climb
     const vsChange = accelVertical * 60 * dt;
     const targetVS = state.verticalSpeed + vsChange;
     
-    // Low-pass filter for smooth VS transition (alpha = 0.1 means 10% of change per frame)
-    const alpha = 0.08;
+    // Low-pass filter for smooth VS transition (alpha = 0.3 means 30% of change per frame)
+    const alpha = 0.3;
     newState.verticalSpeed = state.verticalSpeed + (targetVS - state.verticalSpeed) * alpha;
     
-    // Stronger damping (0.92 = 8% decay per frame)
-    newState.verticalSpeed = newState.verticalSpeed * 0.92;
+    // Moderate damping (0.96 = 4% decay per frame)
+    newState.verticalSpeed = newState.verticalSpeed * 0.96;
     
     // Limit climb rate based on altitude (lower max VS at higher altitudes)
     const maxClimbRate = state.altitude < 10000 ? 3000 : 2500;
