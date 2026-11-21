@@ -29,10 +29,11 @@ function getLiftCoefficient(
 ): number {
   // Realistic lift model for B777-9
   // Cruise (pitch=2°, flaps=0°, 250kts): CL≈0.36 (Lift=Weight)
-  // Takeoff (pitch=8°, flaps=15°, 150kts): CL≈1.25 (enough to rotate)
+  // Level flight (pitch=0°, flaps=0°): CL≈0.22 (slight descent)
+  // Takeoff (pitch=8°, flaps=15°, 155kts): CL≈1.38 (enough to rotate)
   
-  const baseCL = 0.25;
-  const pitchCL = pitch * 0.06;
+  const baseCL = 0.22;
+  const pitchCL = pitch * 0.07;
   const flapsCL = flapsAngle * 0.04;
   
   // Icing reduces lift by up to 30%
