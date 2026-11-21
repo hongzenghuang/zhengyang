@@ -27,31 +27,31 @@ function getDensityRatio(altitude: number): number {
 function getLiftCoefficient(
   pitch: number, flapsAngle: number, airspeed: number, scenario: FlightScenario
 ): number {
-  // Corrected lift model based on realistic aerodynamics
-  // At cruise (pitch=2°, flaps=0°, 250kts): CL≈0.36 (Lift=Weight)
-  // At takeoff (pitch=10°, flaps=15°, 160kts): CL≈1.8 (good rotation)
+  // Realistic lift model for B777-9
+  // Cruise (pitch=2°, flaps=0°, 250kts): CL≈0.36 (Lift=Weight)
+  // Takeoff (pitch=8°, flaps=15°, 150kts): CL≈1.25 (enough to rotate)
   
-  const baseCL = 0.20;
-  const pitchCL = pitch * 0.08;
-  const flapsCL = flapsAngle * 0.053;
+  const baseCL = 0.25;
+  const pitchCL = pitch * 0.06;
+  const flapsCL = flapsAngle * 0.04;
   
   // Icing reduces lift by up to 30%
   const icingPenalty = scenario === 'icing' ? 0.7 : 1.0;
   
   // Stall model: below stall speed, lift degrades
-  const stallSpeed = 110 - flapsAngle * 1.0;
+  const stallSpeed = 120 - flapsAngle * 0.8;
   const stallFactor = airspeed < stallSpeed ? Math.max(0.3, airspeed / stallSpeed) : 1;
   
-  return Math.max(0, Math.min(2.5, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
+  return Math.max(0, Math.min(2.0, (baseCL + pitchCL + flapsCL) * stallFactor * icingPenalty));
 }
 
 function getDragCoefficient(
   liftCoeff: number, flapsAngle: number, gearDown: boolean, scenario: FlightScenario
 ): number {
-  const baseCD = 0.015; // Further reduced base drag
-  const inducedDrag = 0.025 * liftCoeff * liftCoeff; // Much lower induced drag
-  const flapsDrag = flapsAngle * 0.002;
-  const gearDrag = gearDown ? 0.010 : 0;
+  const baseCD = 0.012;
+  const inducedDrag = 0.018 * liftCoeff * liftCoeff;
+  const flapsDrag = flapsAngle * 0.0015;
+  const gearDrag = gearDown ? 0.008 : 0;
   // Icing adds extra drag
   const icingDrag = scenario === 'icing' ? 0.012 : 0;
   return baseCD + inducedDrag + flapsDrag + gearDrag + icingDrag;
@@ -77,10 +77,10 @@ function applyScenarioEffects(state: AircraftState, newState: AircraftState, dt:
         newState.scenarioMessage = '⚠ STALL WARNING - 推杆低头加速改出！';
         // Add nose-down tendency (stall buffet)
         if (state.pitch > 0) {
-          newState.pitch = state.pitch - dt * 0.8;
+          newState.pitch = state.pitch - dt * 0.5;
         }
         // Random roll disturbance (wing drop)
-        newState.roll = state.roll + (Math.random() - 0.5) * dt * 8;
+        newState.roll = state.roll + (Math.random() - 0.5) * dt * 6;
       } else {
         newState.scenarioMessage = '速度恢复，改出成功';
       }
@@ -163,16 +163,18 @@ export function updateFlightPhysics(
     ? state.engine2N1 + (targetN1 - state.engine2N1) * Math.min(1, spoolRate * dt)
     : Math.max(0, state.engine2N1 - dt * 10);
 
-  // Thrust calculation - direct from N1 with idle thrust
-  // At idle (N1=20%), thrust = 10% of max
-  // At max (N1=100%), thrust = 100% of max
-  const thrustFromN1 = (n1: number) => {
+  // Thrust calculation - turbofan thrust model
+  // At low speed: more thrust; at high speed: slightly less
+  // At idle (N1=20%), thrust = 0; at max (N1=100%), full thrust
+  const thrustFromN1 = (n1: number, speed: number) => {
     if (n1 < 20) return 0;
     const normalizedN1 = (n1 - 20) / 80; // 0 to 1
-    return normalizedN1 * MAX_THRUST_PER_ENGINE;
+    // Turbofan: more thrust at low speed, ~15% less at high speed
+    const speedFactor = Math.max(0.85, 1.1 - speed * 0.0008);
+    return normalizedN1 * MAX_THRUST_PER_ENGINE * speedFactor;
   };
-  const n1Thrust1 = state.engine1Enabled ? thrustFromN1(newState.engine1N1) : 0;
-  const n1Thrust2 = state.engine2Enabled ? thrustFromN1(newState.engine2N1) : 0;
+  const n1Thrust1 = state.engine1Enabled ? thrustFromN1(newState.engine1N1, state.airspeed) : 0;
+  const n1Thrust2 = state.engine2Enabled ? thrustFromN1(newState.engine2N1, state.airspeed) : 0;
   const totalThrust = n1Thrust1 + n1Thrust2;
 
   // Ground detection

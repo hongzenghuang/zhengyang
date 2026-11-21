@@ -29,13 +29,14 @@ export function calculateAlerts(state: AircraftState): Alert[] {
   const alerts: Alert[] = [];
   const now = Date.now();
 
-  // STALL WARNING - airspeed too low (only when airborne and above 50ft)
-  // Don't trigger during takeoff roll or initial climb
-  const stallSpeed = 110 + state.flapsAngle * 1.2;
-  const isAirborne = state.altitude > 50;
-  const isClimbingOut = state.altitude > 0 && state.altitude < 400 && state.verticalSpeed > 500;
+  // STALL WARNING - airspeed too low (only when airborne and established in flight)
+  // Don't trigger during takeoff roll or initial climb phase
+  const stallSpeed = 120 + state.flapsAngle * 0.8;
+  const stallThreshold = stallSpeed * 1.08; // 8% margin above stall
+  const isEstablished = state.altitude > 400; // Only warn above 400ft AGL
+  const isInitialClimb = state.altitude > 0 && state.altitude < 1500 && state.verticalSpeed > 300;
   
-  if (state.airspeed < stallSpeed + 10 && isAirborne && !isClimbingOut) {
+  if (state.airspeed < stallThreshold && isEstablished && !isInitialClimb) {
     alerts.push({
       id: 'STALL',
       level: 'warning',
