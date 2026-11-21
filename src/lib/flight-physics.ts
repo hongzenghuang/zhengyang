@@ -30,10 +30,10 @@ function getLiftCoefficient(
   // Realistic lift model for B777-9
   // Cruise (pitch=2°, flaps=0°, 250kts): CL≈0.36 (Lift=Weight)
   // Level flight (pitch=0°, flaps=0°): CL≈0.18 (slight descent)
-  // Takeoff (pitch=8°, flaps=15°, 155kts): CL≈1.50 (enough to rotate)
+  // Takeoff (pitch=8°, flaps=15°, 155kts): CL≈1.38 (enough to rotate)
   
   const baseCL = 0.18;
-  const pitchCL = pitch * 0.09;
+  const pitchCL = pitch * 0.06; // Reduced from 0.09 for smoother pitch response
   const flapsCL = flapsAngle * 0.04;
   
   // Icing reduces lift by up to 30%
@@ -270,9 +270,17 @@ export function updateFlightPhysics(
     }
   } else {
     // In air: normal vertical motion
+    // Apply stronger damping to prevent VS oscillation
     const vsChange = accelVertical * 60 * dt;
-    newState.verticalSpeed = state.verticalSpeed + vsChange;
-    newState.verticalSpeed = newState.verticalSpeed * 0.995; // Damping
+    const targetVS = state.verticalSpeed + vsChange;
+    
+    // Low-pass filter for smooth VS transition (alpha = 0.1 means 10% of change per frame)
+    const alpha = 0.08;
+    newState.verticalSpeed = state.verticalSpeed + (targetVS - state.verticalSpeed) * alpha;
+    
+    // Stronger damping (0.92 = 8% decay per frame)
+    newState.verticalSpeed = newState.verticalSpeed * 0.92;
+    
     // Limit climb rate based on altitude (lower max VS at higher altitudes)
     const maxClimbRate = state.altitude < 10000 ? 3000 : 2500;
     newState.verticalSpeed = Math.max(-4000, Math.min(maxClimbRate, newState.verticalSpeed));
